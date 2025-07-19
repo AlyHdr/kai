@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:kai/screens/dashboard_screen.dart';
 import 'package:kai/screens/meals_plan_screen.dart';
 import 'package:kai/screens/settings_screen.dart';
+import 'package:kai/services/auth_service.dart';
+
+import 'landing_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -12,6 +15,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  final AuthService _authService = AuthService();
 
   final List<Widget> _screens = [
     const DashboardScreen(),
@@ -37,9 +41,24 @@ class _MainScreenState extends State<MainScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.black),
+            icon: const Icon(Icons.logout, color: Colors.black),
             onPressed: () {
               // Handle notifications button press
+              _authService
+                  .signOut()
+                  .then((_) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LandingScreen(),
+                      ),
+                    );
+                  })
+                  .catchError((error) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error signing out: $error')),
+                    );
+                  });
             },
           ),
         ],

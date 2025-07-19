@@ -46,7 +46,7 @@ class _ActivityLevelStepState extends State<ActivityLevelStep> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8),
-          Text('This helps us tailor your experience to your lifestyle.'),
+          Text('This helps me tailor your experience to your lifestyle.'),
           SizedBox(height: 32),
           ...levels.map(
             (level) => Padding(

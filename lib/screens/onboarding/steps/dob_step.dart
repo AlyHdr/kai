@@ -52,7 +52,7 @@ class _DateOfBirthStepState extends State<DateOfBirthStep> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8),
-          Text('This helps us personalize your experience.'),
+          Text('This helps me personalize your experience.'),
           SizedBox(height: 32),
           GestureDetector(
             onTap: _selectDate,

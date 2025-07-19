@@ -1,23 +1,36 @@
+// lib/screens/onboarding/steps/diet_preference_step.dart
 import 'package:flutter/material.dart';
 import '../../../widgets/step_button.dart';
 
-class GoalStep extends StatefulWidget {
-  final String? selectedGoal;
-  final Function(String goal) onNext;
+class DietPreferenceStep extends StatefulWidget {
+  final String? selectedDiet;
+  final Function(String diet) onNext;
 
-  const GoalStep({super.key, this.selectedGoal, required this.onNext});
+  const DietPreferenceStep({
+    super.key,
+    this.selectedDiet,
+    required this.onNext,
+  });
 
   @override
-  State<GoalStep> createState() => _GoalStepState();
+  State<DietPreferenceStep> createState() => _DietPreferenceStepState();
 }
 
-class _GoalStepState extends State<GoalStep> {
-  final List<String> goals = ['Lose Weight', 'Build Muscle', 'Maintain'];
+class _DietPreferenceStepState extends State<DietPreferenceStep> {
+  final List<String> diets = [
+    'No Preference',
+    'Vegetarian',
+    'Vegan',
+    'Low Carb',
+    'High Protein',
+  ];
 
   final Map<String, String> descriptions = {
-    'Lose Weight': 'Focus on fat loss and calorie control.',
-    'Build Muscle': 'Support muscle growth with nutrition and training.',
-    'Maintain': 'Sustain your current physique and health.',
+    'No Preference': 'No specific dietary restriction or preference.',
+    'Vegetarian': 'No meat, but includes dairy and eggs.',
+    'Vegan': 'No animal products of any kind.',
+    'Low Carb': 'Focus on reducing carbohydrate intake.',
+    'High Protein': 'Emphasizes protein-rich foods for muscle growth.',
   };
 
   String? selected;
@@ -25,7 +38,7 @@ class _GoalStepState extends State<GoalStep> {
   @override
   void initState() {
     super.initState();
-    selected = widget.selectedGoal;
+    selected = widget.selectedDiet;
   }
 
   @override
@@ -37,22 +50,22 @@ class _GoalStepState extends State<GoalStep> {
         children: [
           SizedBox(height: 60),
           Text(
-            'What is your main goal?',
+            'Do you have any diet preference?',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8),
-          Text('This helps me personalize your program.'),
+          Text('This helps me tailor recommendations to your lifestyle.'),
           SizedBox(height: 32),
-          ...goals.map(
-            (goal) => Padding(
+          ...diets.map(
+            (diet) => Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
               child: GestureDetector(
-                onTap: () => setState(() => selected = goal),
+                onTap: () => setState(() => selected = diet),
                 child: Container(
                   width: double.infinity,
                   padding: EdgeInsets.symmetric(vertical: 18, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: selected == goal
+                    color: selected == diet
                         ? Colors.greenAccent
                         : Color(0xFFF7F6FA),
                     borderRadius: BorderRadius.circular(16),
@@ -61,7 +74,7 @@ class _GoalStepState extends State<GoalStep> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        goal,
+                        diet,
                         style: TextStyle(
                           color: Colors.black,
                           fontWeight: FontWeight.bold,
@@ -70,8 +83,13 @@ class _GoalStepState extends State<GoalStep> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        descriptions[goal]!,
-                        style: TextStyle(color: Colors.black87, fontSize: 14),
+                        descriptions[diet]!,
+                        style: TextStyle(
+                          color: selected == diet
+                              ? Colors.white70
+                              : Colors.black87,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),

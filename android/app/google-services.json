@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "505199639473",
+    "project_id": "kai-nutrition-assistant",
+    "storage_bucket": "kai-nutrition-assistant.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:505199639473:android:12df27e10d9f67234d9b90",
+        "android_client_info": {
+          "package_name": "com.example.kai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMFtNe3UVNiSejeSOxMgXxV3tbW2j5KeM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

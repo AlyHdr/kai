@@ -1,11 +1,19 @@
 // lib/screens/onboarding/onboarding_flow.dart
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:kai/screens/authentication/verify_email_screen.dart';
+import 'package:kai/screens/onboarding/steps/thanking_step.dart';
+import 'package:kai/services/auth_service.dart';
+import 'package:kai/services/macros_service.dart';
+import 'package:kai/services/users_service.dart';
 import '../../models/onboarding_data.dart';
 import 'steps/activity_step.dart';
+import 'steps/diet_step.dart';
 import 'steps/gender_step.dart';
 import 'steps/height_weight_step.dart';
 import 'steps/dob_step.dart';
 import 'steps/goal_step.dart';
+import 'steps/registration_step.dart';
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({super.key});
@@ -18,9 +26,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   final PageController _controller = PageController();
   int _currentStep = 0;
   OnboardingData data = OnboardingData();
-
+  final AuthService _authService = AuthService();
+  final UsersService _userService = UsersService();
+  final MacrosService _macrosService = MacrosService();
   void _nextStep() {
-    if (_currentStep < 4) {
+    if (_currentStep < 7) {
       _controller.nextPage(
         duration: Duration(milliseconds: 300),
         curve: Curves.ease,
@@ -48,7 +58,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           },
         ),
         title: LinearProgressIndicator(
-          value: (_currentStep + 1) / 5, // Adjust based on number of steps
+          value: (_currentStep + 1) / 8, // Adjust based on number of steps
           backgroundColor: Colors.grey.shade300,
           color: Colors.greenAccent,
         ),
@@ -98,6 +108,59 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             onNext: (goal) {
               setState(() => data.goal = goal);
               _nextStep();
+            },
+          ),
+          DietPreferenceStep(
+            selectedDiet: data.dietPreference,
+            onNext: (diet) {
+              setState(() => data.dietPreference = diet);
+              _nextStep();
+            },
+          ),
+          ThankingStep(
+            onNext: () {
+              _nextStep();
+            },
+          ),
+          RegistrationStep(
+            onRegister: (fullName, email, password, isTrial) async {
+              try {
+                final userCredentials = await _authService.signUp(
+                  email,
+                  password,
+                );
+                final uid = userCredentials.user?.uid;
+
+                if (uid != null) {
+                  setState(() {
+                    data.isTrial = isTrial;
+                    data.fullName = fullName;
+                  });
+
+                  await _userService.createUser(uid, data);
+                  await userCredentials.user?.sendEmailVerification();
+                  await _macrosService
+                      .generateMacros(data, uid)
+                      .then((_) {
+                        // Navigate to the next screen or show a success message
+                        print("Onboarding completed with data: $data");
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                VerifyEmailScreen(user: userCredentials.user!),
+                          ),
+                        );
+                      })
+                      .catchError((error) {
+                        print("Error generating macros: $error");
+                      });
+                } else {
+                  print('User UID is null');
+                }
+              } catch (error) {
+                print('Registration error: $error');
+              }
             },
           ),
         ],

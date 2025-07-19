@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:kai/screens/main_screen.dart';
+import 'package:kai/screens/landing_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -16,7 +20,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.greenAccent),
       ),
-      home: const MainScreen(),
+      home: const LandingScreen(),
     );
   }
 }
