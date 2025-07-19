@@ -7,6 +7,9 @@ import google.cloud.firestore
 from openai import OpenAI
 from pydantic import BaseModel
 import os
+from dotenv import load_dotenv
+load_dotenv()
+print("Initializing Firebase Admin SDK...")
 
 client = OpenAI(
     api_key = os.getenv("OPENAI_API_KEY")
@@ -14,11 +17,18 @@ client = OpenAI(
 
 app = initialize_app()
 
+print("openai key:", )
 class Macros(BaseModel):
     calories: int
     protein: int
     carbs: int
     fats: int
+
+
+@https_fn.on_call()
+def print_hello(req: https_fn.CallableRequest):
+    print("Received request:", req.data)
+    return {"message": "Hello from Firebase Functions!"}
 
 @https_fn.on_call()
 def generate_macros(req: https_fn.CallableRequest):
