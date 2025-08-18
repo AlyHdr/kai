@@ -28,6 +28,14 @@ class UsersService {
     return Map<String, dynamic>.from(doc.data()!['macros']);
   }
 
+  Future<Map<String, dynamic>?> getUserData() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    final doc = await _usersCollection.doc(uid).get();
+    if (!doc.exists) return null;
+    return doc.data();
+  }
+
   Future<void> updateMacros(String uid, Map<String, dynamic> macros) async {
     try {
       await _usersCollection.doc(uid).update({'macros': macros});
@@ -36,7 +44,7 @@ class UsersService {
     }
   }
 
-  Future<Map<String, dynamic>?> getDashboardData() async {
+  Future<Map<String, dynamic>?> getDashboardData(DateTime selectedDate) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
 
@@ -45,14 +53,12 @@ class UsersService {
     if (!userDoc.exists) return null;
 
     final userData = userDoc.data();
-    print("User Data: $userData");
     final macros = userData?['macros'];
     if (macros == null) return null;
 
     // Format today's date as YYYY-MM-DD
-    final now = DateTime.now();
     final dateKey =
-        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+        "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
     // Fetch today's intake
     final intakeDoc = await _usersCollection
@@ -61,17 +67,21 @@ class UsersService {
         .doc(dateKey)
         .get();
 
-    print("Intake Document: ${intakeDoc.data()}");
-    List<dynamic> meals = intakeDoc.data()?['meals'] ?? [];
+    final mealsMap = intakeDoc.data()?['meals'] as Map<String, dynamic>? ?? {};
+
     // Aggregate today's totals
     double totalCalories = 0, totalFats = 0, totalCarbs = 0, totalProteins = 0;
 
-    for (final meal in meals) {
-      totalCalories += (meal['calories'] ?? 0).toDouble();
-      totalFats += (meal['fats'] ?? 0).toDouble();
-      totalCarbs += (meal['carbs'] ?? 0).toDouble();
-      totalProteins += (meal['proteins'] ?? 0).toDouble();
-    }
+    mealsMap.forEach((key, meal) {
+      if (meal is Map<String, dynamic>) {
+        final macrosMap = meal['macros'] as Map<String, dynamic>? ?? {};
+        totalCalories += (macrosMap['calories'] ?? meal['calories'] ?? 0)
+            .toDouble();
+        totalFats += (macrosMap['fats'] ?? 0).toDouble();
+        totalCarbs += (macrosMap['carbs'] ?? 0).toDouble();
+        totalProteins += (macrosMap['protein'] ?? 0).toDouble();
+      }
+    });
 
     // Calculate progress
     double calorieProgress = totalCalories / (macros['calories'] ?? 1);
@@ -81,7 +91,7 @@ class UsersService {
 
     return {
       'macros': macros,
-      'meals': meals,
+      'meals': mealsMap,
       'progress': {
         'calories': calorieProgress.clamp(0.0, 1.0),
         'fats': fatProgress.clamp(0.0, 1.0),

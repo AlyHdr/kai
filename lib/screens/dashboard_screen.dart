@@ -1,15 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:kai/services/macros_service.dart';
 import 'package:kai/services/users_service.dart';
 import 'package:kai/widgets/calorie_tank.dart';
 import 'package:kai/widgets/macro_ring.dart';
+import 'package:kai/widgets/week_progress.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  DateTime selectedDate = DateTime.now();
+  late Future<Map<String, dynamic>?> dashboardData;
+
+  @override
+  void initState() {
+    super.initState();
+    dashboardData = UsersService().getDashboardData(selectedDate);
+  }
+
+  void _onDaySelected(DateTime date) {
+    setState(() {
+      selectedDate = date;
+      dashboardData = UsersService().getDashboardData(selectedDate);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>?>(
-      future: UsersService().getDashboardData(),
+      future: dashboardData,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -27,7 +50,7 @@ class DashboardScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/generate_macros');
+                      // Trigger macro generation
                     },
                     child: const Text("Generate Macros"),
                   ),
@@ -38,15 +61,21 @@ class DashboardScreen extends StatelessWidget {
         }
 
         final data = snapshot.data!;
-        print(data);
         final progress = data['progress'];
-        final meals = data['meals'] as List<dynamic>;
+        final mealsMap = data['meals'] as Map<String, dynamic>;
+        print("Dashboard Data: $data");
 
         return Scaffold(
           body: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
+                WeekProgressBar(
+                  selectedDate: selectedDate,
+                  onDateSelected: _onDaySelected,
+                ),
+                const SizedBox(height: 24),
+
                 Card(
                   // Macros progress ring
                   child: Padding(
@@ -115,7 +144,7 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 Expanded(
                   child: Row(
                     children: [
@@ -133,11 +162,7 @@ class DashboardScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 16),
                                 CalorieTankWidget(
-                                  progress: progress['calories'],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  "${(progress['calories'] * 100).toStringAsFixed(0)}% of daily goal",
+                                  progress: 1.0 - progress['calories'],
                                 ),
                               ],
                             ),
@@ -152,37 +177,51 @@ class DashboardScreen extends StatelessWidget {
                             padding: const EdgeInsets.all(16.0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 const Text(
                                   "Today's Meals",
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 12),
-                                ...meals.map(
-                                  (meal) => Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 6,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          meal['name'],
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                // scrollable list to prevent overflow
+                                Expanded(
+                                  child: ListView(
+                                    children: mealsMap.entries.map((entry) {
+                                      final category = entry
+                                          .key; // breakfast/lunch/dinner/snack
+                                      final meal =
+                                          entry.value as Map<String, dynamic>?;
+                                      final name =
+                                          meal?['name'] as String? ??
+                                          'Not selected';
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 6,
                                         ),
-                                        Text(
-                                          meal['category'],
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 12,
-                                          ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              category[0].toUpperCase() +
+                                                  category.substring(1),
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
+                                      );
+                                    }).toList(),
                                   ),
                                 ),
                               ],
