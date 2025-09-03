@@ -11,7 +11,7 @@ class CalorieTankWidget extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         CustomPaint(
-          size: const Size(60, 150),
+          size: const Size(70, 130),
           painter: CalorieTankPainter(progress: progress),
         ),
         Positioned(

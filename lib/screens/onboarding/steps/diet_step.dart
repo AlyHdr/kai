@@ -48,7 +48,7 @@ class _DietPreferenceStepState extends State<DietPreferenceStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 60),
+          SizedBox(height: 20),
           Text(
             'Do you have any diet preference?',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -56,48 +56,61 @@ class _DietPreferenceStepState extends State<DietPreferenceStep> {
           SizedBox(height: 8),
           Text('This helps me tailor recommendations to your lifestyle.'),
           SizedBox(height: 32),
-          ...diets.map(
-            (diet) => Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: GestureDetector(
-                onTap: () => setState(() => selected = diet),
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: selected == diet
-                        ? Colors.greenAccent
-                        : Color(0xFFF7F6FA),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        diet,
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+
+          // 👇 Wrap your choices in Expanded + SingleChildScrollView
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: diets
+                    .map(
+                      (diet) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: GestureDetector(
+                          onTap: () => setState(() => selected = diet),
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                              vertical: 18,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: selected == diet
+                                  ? Colors.greenAccent
+                                  : Color(0xFFF7F6FA),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  diet,
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  descriptions[diet]!,
+                                  style: TextStyle(
+                                    color: selected == diet
+                                        ? Colors.white70
+                                        : Colors.black87,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        descriptions[diet]!,
-                        style: TextStyle(
-                          color: selected == diet
-                              ? Colors.white70
-                              : Colors.black87,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    )
+                    .toList(),
               ),
             ),
           ),
-          Spacer(),
+
           StepButton(
             enabled: selected != null,
             onPressed: () => widget.onNext(selected!),

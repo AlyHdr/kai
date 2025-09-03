@@ -28,3 +28,23 @@ class OnboardingData {
     };
   }
 }
+
+const Map<String, String> activityLevels = {
+  'Low': 'Mostly sedentary lifestyle, little to no exercise.',
+  'Moderate': 'Light exercise or daily activity like walking.',
+  'High': 'Frequent intense workouts or physically demanding job.',
+};
+
+const Map<String, String> diets = {
+  'No Preference': 'No specific dietary restriction or preference.',
+  'Vegetarian': 'No meat, but includes dairy and eggs.',
+  'Vegan': 'No animal products of any kind.',
+  'Low Carb': 'Focus on reducing carbohydrate intake.',
+  'High Protein': 'Emphasizes protein-rich foods for muscle growth.',
+};
+
+const Map<String, String> goals = {
+  'Lose Weight': 'Focus on fat loss and calorie control.',
+  'Build Muscle': 'Support muscle growth with nutrition and training.',
+  'Maintain': 'Sustain your current physique and health.',
+};

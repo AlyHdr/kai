@@ -17,7 +17,7 @@ class MacroRingWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      size: const Size(250, 250),
+      size: const Size(170, 170),
       painter: MacroRingPainter(
         fatProgress: fatProgress,
         proteinProgress: proteinProgress,

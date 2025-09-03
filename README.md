@@ -14,3 +14,12 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## MVP scope:
+
+- User authentication
+- Store onboarding data
+- Generate daily meal plans using LLM + connect to user data
+- Store generated daily calorie consumption, macros and connect them to the interface
+- Update values based on user consumption
+- allow users to update the macros manually if needed

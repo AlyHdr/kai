@@ -37,7 +37,7 @@ class _RegistrationStepState extends State<RegistrationStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 60),
+          SizedBox(height: 20),
           Text(
             'Create your account',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),

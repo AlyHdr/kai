@@ -39,7 +39,7 @@ class _HeightWeightStepState extends State<HeightWeightStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 60),
+          SizedBox(height: 20),
           Text(
             'Height & weight',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),

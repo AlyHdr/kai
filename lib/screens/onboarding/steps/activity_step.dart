@@ -40,7 +40,7 @@ class _ActivityLevelStepState extends State<ActivityLevelStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 60),
+          SizedBox(height: 20),
           Text(
             'How active are you?',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),

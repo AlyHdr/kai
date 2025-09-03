@@ -35,7 +35,7 @@ class _GoalStepState extends State<GoalStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 60),
+          SizedBox(height: 20),
           Text(
             'What is your main goal?',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),

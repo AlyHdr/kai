@@ -29,7 +29,7 @@ class _GenderStepState extends State<GenderStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 60),
+          SizedBox(height: 20),
           Text(
             'Choose your Gender',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),

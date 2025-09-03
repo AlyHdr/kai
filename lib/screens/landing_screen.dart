@@ -28,6 +28,8 @@ class LandingScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    Image.asset('assets/images/logo-only.png', height: 200),
+
                     const SizedBox(height: 20),
                     const Text(
                       'Hello I\'m Kai!',
@@ -43,6 +45,7 @@ class LandingScreen extends StatelessWidget {
                       style: TextStyle(fontSize: 18),
                       textAlign: TextAlign.center,
                     ),
+
                     const SizedBox(height: 20),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(

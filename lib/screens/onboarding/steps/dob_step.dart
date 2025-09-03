@@ -46,7 +46,7 @@ class _DateOfBirthStepState extends State<DateOfBirthStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 60),
+          SizedBox(height: 20),
           Text(
             'What is your date of birth?',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
