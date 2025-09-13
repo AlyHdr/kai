@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kai/models/onboarding_data.dart';
+import 'package:kai/services/macros_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -32,6 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _origFats = 0;
 
   bool _loading = true;
+  bool _regenerating = false; // spinner while calling macros function
 
   final TextStyle valueStyle = const TextStyle(fontSize: 16);
 
@@ -153,7 +155,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .doc(userId)
         .update(updatedUser);
 
-    // Refresh originals after save
+    if (!_macrosChanged) {
+      try {
+        setState(() => _regenerating = true);
+        final data = OnboardingData()
+          ..fullName = null
+          ..gender = gender
+          ..heightCm = heightCm.round()
+          ..weightKg = weightKg.round()
+          ..activityLevel = activityLevel
+          ..dateOfBirth = dateOfBirth
+          ..goal = goal
+          ..dietPreference = diet;
+
+        await MacrosService().generateMacros(data, userId);
+        await _loadUser();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Saved and recalculated macros ✅')),
+          );
+        }
+        return;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Saved, but failed to recalc macros: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _regenerating = false);
+      }
+    }
     setState(() {
       _origCalories = macrosCalories;
       _origCarbs = macrosCarbs;
@@ -364,150 +396,173 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      body: ListView(
+      body: Stack(
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              "Profile",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ),
-          ListTile(
-            title: const Text("Date of Birth"),
-            trailing: Text(
-              dateOfBirth != null
-                  ? "${dateOfBirth!.day}/${dateOfBirth!.month}/${dateOfBirth!.year}"
-                  : "Not set",
-              style: valueStyle,
-            ),
-            onTap: _pickDateOfBirth,
-          ),
-          ListTile(
-            title: const Text("Weight"),
-            trailing: Text("$weightKg kg", style: valueStyle),
-            onTap: () => _editDouble(
-              "Weight (kg)",
-              weightKg,
-              (val) => setState(() => weightKg = val),
-              saveImmediately: true,
-            ),
-          ),
-          ListTile(
-            title: const Text("Height"),
-            trailing: Text("$heightCm cm", style: valueStyle),
-            onTap: () => _editDouble(
-              "Height (cm)",
-              heightCm,
-              (val) => setState(() => heightCm = val),
-              saveImmediately: true,
-            ),
-          ),
-          ListTile(
-            title: const Text("Gender"),
-            trailing: Text(gender, style: valueStyle),
-            onTap: () => _editChoice(
-              "Gender",
-              gender,
-              {"male": "", "female": ""},
-              (val) => setState(() => gender = val),
-              saveImmediately: true,
-            ),
-          ),
-          ListTile(
-            title: const Text("Activity Level"),
-            trailing: Text(activityLevel, style: valueStyle),
-            onTap: () => _editChoice(
-              "Activity Level",
-              activityLevel,
-              activityLevels,
-              (val) => setState(() => activityLevel = val),
-              saveImmediately: true,
-            ),
-          ),
-          ListTile(
-            title: const Text("Diet"),
-            trailing: Text(diet, style: valueStyle),
-            onTap: () => _editChoice(
-              "Diet",
-              diet,
-              diets,
-              (val) => setState(() => diet = val),
-              saveImmediately: true,
-            ),
-          ),
-          ListTile(
-            title: const Text("Goal"),
-            trailing: Text(goal, style: valueStyle),
-            onTap: () => _editChoice(
-              "Goal",
-              goal,
-              goals,
-              (val) => setState(() => goal = val),
-              saveImmediately: true,
-            ),
-          ),
+          ListView(
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  "Profile",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                title: const Text("Date of Birth"),
+                trailing: Text(
+                  dateOfBirth != null
+                      ? "${dateOfBirth!.day}/${dateOfBirth!.month}/${dateOfBirth!.year}"
+                      : "Not set",
+                  style: valueStyle,
+                ),
+                onTap: _pickDateOfBirth,
+              ),
+              ListTile(
+                title: const Text("Weight"),
+                trailing: Text("$weightKg kg", style: valueStyle),
+                onTap: () => _editDouble(
+                  "Weight (kg)",
+                  weightKg,
+                  (val) => setState(() => weightKg = val),
+                  saveImmediately: true,
+                ),
+              ),
+              ListTile(
+                title: const Text("Height"),
+                trailing: Text("$heightCm cm", style: valueStyle),
+                onTap: () => _editDouble(
+                  "Height (cm)",
+                  heightCm,
+                  (val) => setState(() => heightCm = val),
+                  saveImmediately: true,
+                ),
+              ),
+              ListTile(
+                title: const Text("Gender"),
+                trailing: Text(gender, style: valueStyle),
+                onTap: () => _editChoice(
+                  "Gender",
+                  gender,
+                  {"male": "", "female": ""},
+                  (val) => setState(() => gender = val),
+                  saveImmediately: true,
+                ),
+              ),
+              ListTile(
+                title: const Text("Activity Level"),
+                trailing: Text(activityLevel, style: valueStyle),
+                onTap: () => _editChoice(
+                  "Activity Level",
+                  activityLevel,
+                  activityLevels,
+                  (val) => setState(() => activityLevel = val),
+                  saveImmediately: true,
+                ),
+              ),
+              ListTile(
+                title: const Text("Diet"),
+                trailing: Text(diet, style: valueStyle),
+                onTap: () => _editChoice(
+                  "Diet",
+                  diet,
+                  diets,
+                  (val) => setState(() => diet = val),
+                  saveImmediately: true,
+                ),
+              ),
+              ListTile(
+                title: const Text("Goal"),
+                trailing: Text(goal, style: valueStyle),
+                onTap: () => _editChoice(
+                  "Goal",
+                  goal,
+                  goals,
+                  (val) => setState(() => goal = val),
+                  saveImmediately: true,
+                ),
+              ),
 
-          // --- Manual Macros (Advanced) section
-          const SizedBox(height: 12),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-            child: Text(
-              "Manual Macros (Advanced)",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ),
-          ListTile(
-            title: const Text("Calories"),
-            subtitle: const Text("kcal/day"),
-            trailing: Text(macrosCalories.toString(), style: valueStyle),
-            onTap: () => _warnThenEditMacro(
-              fieldLabel: "Calories (kcal/day)",
-              current: macrosCalories,
-              onApply: (v) => setState(() => macrosCalories = v),
-              min: 0,
-              max: 10000,
-            ),
-          ),
-          ListTile(
-            title: const Text("Carbs"),
-            subtitle: const Text("grams/day"),
-            trailing: Text(macrosCarbs.toString(), style: valueStyle),
-            onTap: () => _warnThenEditMacro(
-              fieldLabel: "Carbs (g/day)",
-              current: macrosCarbs,
-              onApply: (v) => setState(() => macrosCarbs = v),
-              min: 0,
-              max: 1000,
-            ),
-          ),
-          ListTile(
-            title: const Text("Proteins"),
-            subtitle: const Text("grams/day"),
-            trailing: Text(macrosProteins.toString(), style: valueStyle),
-            onTap: () => _warnThenEditMacro(
-              fieldLabel: "Proteins (g/day)",
-              current: macrosProteins,
-              onApply: (v) => setState(() => macrosProteins = v),
-              min: 0,
-              max: 600,
-            ),
-          ),
-          ListTile(
-            title: const Text("Fats"),
-            subtitle: const Text("grams/day"),
-            trailing: Text(macrosFats.toString(), style: valueStyle),
-            onTap: () => _warnThenEditMacro(
-              fieldLabel: "Fats (g/day)",
-              current: macrosFats,
-              onApply: (v) => setState(() => macrosFats = v),
-              min: 0,
-              max: 300,
-            ),
-          ),
+              // --- Manual Macros (Advanced) section
+              const SizedBox(height: 12),
+              const Divider(),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+                child: Text(
+                  "Manual Macros (Advanced)",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                title: const Text("Calories"),
+                subtitle: const Text("kcal/day"),
+                trailing: Text(macrosCalories.toString(), style: valueStyle),
+                onTap: () => _warnThenEditMacro(
+                  fieldLabel: "Calories (kcal/day)",
+                  current: macrosCalories,
+                  onApply: (v) => setState(() => macrosCalories = v),
+                  min: 0,
+                  max: 10000,
+                ),
+              ),
+              ListTile(
+                title: const Text("Carbs"),
+                subtitle: const Text("grams/day"),
+                trailing: Text(macrosCarbs.toString(), style: valueStyle),
+                onTap: () => _warnThenEditMacro(
+                  fieldLabel: "Carbs (g/day)",
+                  current: macrosCarbs,
+                  onApply: (v) => setState(() => macrosCarbs = v),
+                  min: 0,
+                  max: 1000,
+                ),
+              ),
+              ListTile(
+                title: const Text("Proteins"),
+                subtitle: const Text("grams/day"),
+                trailing: Text(macrosProteins.toString(), style: valueStyle),
+                onTap: () => _warnThenEditMacro(
+                  fieldLabel: "Proteins (g/day)",
+                  current: macrosProteins,
+                  onApply: (v) => setState(() => macrosProteins = v),
+                  min: 0,
+                  max: 600,
+                ),
+              ),
+              ListTile(
+                title: const Text("Fats"),
+                subtitle: const Text("grams/day"),
+                trailing: Text(macrosFats.toString(), style: valueStyle),
+                onTap: () => _warnThenEditMacro(
+                  fieldLabel: "Fats (g/day)",
+                  current: macrosFats,
+                  onApply: (v) => setState(() => macrosFats = v),
+                  min: 0,
+                  max: 300,
+                ),
+              ),
 
-          const SizedBox(height: 8),
+              const SizedBox(height: 8),
+            ],
+          ),
+          if (_regenerating)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black45,
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 12),
+                      Text(
+                        'Recalculating macros…',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
