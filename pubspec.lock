@@ -33,6 +33,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
+  change_app_package_name:
+    dependency: "direct dev"
+    description:
+      name: change_app_package_name
+      sha256: "8e43b754fe960426904d77ed4c62fa8c9834deaf6e293ae40963fa447482c4c5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.0"
   characters:
     dependency: transitive
     description:
@@ -324,10 +332,18 @@ packages:
     dependency: "direct main"
     description:
       name: purchases_flutter
-      sha256: "239aae77964d4e6da88f1b870259df7c1325dcad7187d257a024b885d85534eb"
+      sha256: "4a29ed10813e4c9f6e31e2f8a8f2580a65dfbf41effbe40655dcf00d4c55dc2d"
       url: "https://pub.dev"
     source: hosted
-    version: "9.2.1"
+    version: "9.5.0"
+  purchases_ui_flutter:
+    dependency: "direct main"
+    description:
+      name: purchases_ui_flutter
+      sha256: c22ee5e395e8c0471647616fa16f0046872bcf036246727b905ca83cd156c85d
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.5.0"
   sky_engine:
     dependency: transitive
     description: flutter

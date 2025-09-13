@@ -19,6 +19,36 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
   late final String _dateId; // yyyy-MM-dd
   bool _generationTriggered = false;
 
+  // Option sources (customize freely)
+  static const List<String> cuisines = <String>[
+    'any',
+    'Mediterranean',
+    'Italian',
+    'French',
+    'Mexican',
+    'Indian',
+    'Japanese',
+    'Chinese',
+    'Middle Eastern',
+    'Thai',
+    'American',
+  ];
+
+  static const List<String> proteinOptions = <String>[
+    'any',
+    'chicken',
+    'beef',
+    'turkey',
+    'pork',
+    'fish',
+    'seafood',
+    'eggs',
+    'dairy',
+    'tofu',
+    'tempeh',
+    'legumes',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -42,19 +72,129 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       .collection('intake')
       .doc(_dateId);
 
+  /// Prompts the user for cuisine and protein preferences.
+  /// Returns a map shaped like:
+  /// {
+  ///   'cuisine': String,
+  ///   'proteins': {'breakfast': String, 'lunch': String, 'dinner': String}
+  /// }
+  /// If the dialog is dismissed, returns sensible 'any' defaults.
+  Future<Map<String, dynamic>> _promptMealPreferences() async {
+    String cuisine = 'any';
+    String proteinBreakfast = 'any';
+    String proteinLunch = 'any';
+    String proteinDinner = 'any';
+
+    // Show the dialog; keep local state with StatefulBuilder
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Meal Preferences'),
+          content: StatefulBuilder(
+            builder: (ctx, setLocal) {
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Choose your cuisine and preferred protein for each meal.',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: cuisine,
+                      decoration: const InputDecoration(
+                        labelText: 'Cuisine',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: cuisines
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(_capitalize(c)),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setLocal(() => cuisine = v ?? 'any'),
+                    ),
+                    const SizedBox(height: 16),
+                    _ProteinDropdown(
+                      label: 'Breakfast protein',
+                      value: proteinBreakfast,
+                      onChanged: (v) => setLocal(() => proteinBreakfast = v),
+                    ),
+                    const SizedBox(height: 12),
+                    _ProteinDropdown(
+                      label: 'Lunch protein',
+                      value: proteinLunch,
+                      onChanged: (v) => setLocal(() => proteinLunch = v),
+                    ),
+                    const SizedBox(height: 12),
+                    _ProteinDropdown(
+                      label: 'Dinner protein',
+                      value: proteinDinner,
+                      onChanged: (v) => setLocal(() => proteinDinner = v),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Skip'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Apply'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If user pressed Apply or Skip, return current selections (defaults remain 'any')
+    return {
+      'cuisine': cuisine,
+      'proteins': {
+        'breakfast': proteinBreakfast,
+        'lunch': proteinLunch,
+        'dinner': proteinDinner,
+      },
+    };
+  }
+
   Future<void> _ensurePlanExistsOnce() async {
     if (_generationTriggered) return; // prevent multiple calls
     _generationTriggered = true;
     try {
       final snap = await _planDoc.get();
       if (!snap.exists) {
-        FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
+        // Ask for preferences before generating
+        final preferences = await _promptMealPreferences();
+
+        // If using emulator locally, keep this (you can guard by assert if needed)
+        // if (const bool.fromEnvironment('dart.vm.product') == false) {
+        //   FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
+        // }
 
         var userData = await UsersService().getUserData();
 
-        final result = await FirebaseFunctions.instance
+        // Merge preferences into the payload sent to the callable
+        final payload = {
+          ...userData!,
+          'preferences': preferences,
+          // You can add date if the CF expects it
+          'dateId': _dateId,
+        };
+        final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
+
+        final result = await functions
             .httpsCallable('generate_meal_plan')
-            .call(userData);
+            .call(payload);
 
         // Save the generated plan to Firestore
         if (result.data != null && result.data is Map<String, dynamic>) {
@@ -63,6 +203,7 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       }
     } catch (e) {
       if (mounted) {
+        print('Error generating plan: $e');
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to generate plan: $e')));
@@ -140,6 +281,66 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                   selected: selected['dinner'],
                   onPick: (meal) => _selectMeal('dinner', meal),
                 ),
+                const SizedBox(height: 16),
+                _MealSection(
+                  title: 'Snack',
+                  keyName: 'snack',
+                  options: (meals['snack'] as List<dynamic>? ?? [])
+                      .map((e) => e as Map<String, dynamic>)
+                      .toList(),
+                  selected: selected['snack'],
+                  onPick: (meal) => _selectMeal('snack', meal),
+                ),
+                const SizedBox(height: 12),
+
+                // Optional: allow regenerating with new preferences
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    try {
+                      final prefs = await _promptMealPreferences();
+                      // Use Functions emulator only in debug/profile builds
+                      if (const bool.fromEnvironment('dart.vm.product') == false) {
+                        FirebaseFunctions.instance.useFunctionsEmulator(
+                          'localhost',
+                          5001,
+                        );
+                      }
+                      var userData = await UsersService().getUserData();
+                      final payload = {
+                        ...userData!,
+                        'preferences': prefs,
+                        'dateId': _dateId,
+                        'forceRegenerate': true,
+                      };
+                      final result = await FirebaseFunctions.instance
+                          .httpsCallable('generate_meal_plan')
+                          .call(payload);
+                      if (result.data != null &&
+                          result.data is Map<String, dynamic>) {
+                        await _planDoc.set(result.data as Map<String, dynamic>);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Plan regenerated with preferences',
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to regenerate plan: $e'),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.tune),
+                  label: const Text('Adjust preferences & regenerate'),
+                ),
               ],
             ),
           );
@@ -208,6 +409,8 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
         return 'Lunch';
       case 'dinner':
         return 'Dinner';
+      case 'snack':
+        return 'Snack';
       default:
         return mealKey;
     }
@@ -231,6 +434,41 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       'protein': protein,
     };
   }
+
+  static String _capitalize(String v) =>
+      v.isEmpty ? v : v[0].toUpperCase() + v.substring(1);
+}
+
+class _ProteinDropdown extends StatelessWidget {
+  const _ProteinDropdown({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      items: _MealPlanScreenState.proteinOptions
+          .map((p) => DropdownMenuItem(value: p, child: Text(_cap(p))))
+          .toList(),
+      onChanged: (v) {
+        if (v != null) onChanged(v);
+      },
+    );
+  }
+
+  static String _cap(String v) =>
+      v.isEmpty ? v : v[0].toUpperCase() + v.substring(1);
 }
 
 class _MealSection extends StatelessWidget {
@@ -356,50 +594,135 @@ class _DetailsButton extends StatelessWidget {
   const _DetailsButton({required this.meal});
   final Map<String, dynamic> meal;
 
+  List<String> _asStringList(dynamic v) {
+    if (v == null) return const [];
+    if (v is List) {
+      return v
+          .where((e) => e != null)
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
   @override
   Widget build(BuildContext context) {
     return OutlinedButton(
+      child: const Text('Details'),
       onPressed: () {
+        final theme = Theme.of(context);
         showModalBottomSheet(
           context: context,
-          showDragHandle: true,
           isScrollControlled: true,
+          showDragHandle: true,
           builder: (context) {
             final macros = (meal['macros'] as Map<String, dynamic>?) ?? {};
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    meal['name'] ?? 'Meal',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(meal['description'] ?? 'No description'),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
+            final ingredients = _asStringList(
+              meal['ingredients'],
+            ); // <-- List<String>
+            final instructions = _asStringList(
+              meal['instructions'],
+            ); // <-- List<String>
+
+            final calories = macros['calories'] ?? meal['calories'];
+            final protein = macros['protein'];
+            final carbs = macros['carbs'];
+            final fats = macros['fats'];
+
+            return SafeArea(
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.8,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Chip(
-                        label: Text(
-                          'Cal: ${macros['calories'] ?? meal['calories'] ?? '-'}',
-                        ),
+                      // Title
+                      Text(
+                        meal['name'] ?? 'Meal',
+                        style: theme.textTheme.titleLarge,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      Chip(label: Text('P: ${macros['protein'] ?? '-'}g')),
-                      Chip(label: Text('C: ${macros['carbs'] ?? '-'}g')),
-                      Chip(label: Text('F: ${macros['fats'] ?? '-'}g')),
+                      const SizedBox(height: 8),
+
+                      // Description
+                      if ((meal['description'] as String?)?.isNotEmpty ==
+                          true) ...[
+                        Text(meal['description']),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Macros chips
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          if (calories != null)
+                            Chip(label: Text('Cal: $calories')),
+                          if (protein != null)
+                            Chip(label: Text('P: $protein g')),
+                          if (carbs != null) Chip(label: Text('C: $carbs g')),
+                          if (fats != null) Chip(label: Text('F: $fats g')),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Ingredients (bulleted)
+                      if (ingredients.isNotEmpty) ...[
+                        Text('Ingredients', style: theme.textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        ...ingredients.map(
+                          (line) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('•  '),
+                                Expanded(child: Text(line)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Instructions (numbered)
+                      if (instructions.isNotEmpty) ...[
+                        Text(
+                          'Instructions',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        ...List.generate(instructions.length, (i) {
+                          final step = instructions[i];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('${i + 1}. '),
+                                Expanded(child: Text(step)),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+
+                      if (ingredients.isEmpty && instructions.isEmpty)
+                        Text(
+                          'No detailed ingredients or instructions available.',
+                          style: theme.textTheme.bodySmall,
+                        ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                ],
+                ),
               ),
             );
           },
         );
       },
-      child: const Text('Details'),
     );
   }
 }
@@ -425,7 +748,7 @@ class _TotalsCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _Kpi(label: 'Calories', value: '${totals['calories'] ?? 0}'),
-                _Kpi(label: 'Protein', value: '${totals['protein'] ?? 0}g'),
+                _Kpi(label: 'Protein', value: '${totals['proteins'] ?? 0}g'),
                 _Kpi(label: 'Carbs', value: '${totals['carbs'] ?? 0}g'),
                 _Kpi(label: 'Fats', value: '${totals['fats'] ?? 0}g'),
               ],

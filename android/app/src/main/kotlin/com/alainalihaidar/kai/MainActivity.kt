@@ -1,4 +1,4 @@
-package com.example.kai
+package com.alainalihaidar.kai
 
 import io.flutter.embedding.android.FlutterActivity
 

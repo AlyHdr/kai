@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kai/screens/dashboard_screen.dart';
 import 'package:kai/screens/meals_plan_screen.dart';
-import 'package:kai/screens/settings_screen.dart';
+import 'package:kai/screens/profile_screen.dart';
 import 'package:kai/services/auth_service.dart';
 
 import 'landing_screen.dart';
@@ -20,7 +20,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const DashboardScreen(),
     const MealPlanScreen(),
-    const SettingsScreen(),
+    const ProfileScreen(),
   ];
 
   @override
@@ -77,10 +77,7 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.restaurant_menu),
             label: 'Meal Plans',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );

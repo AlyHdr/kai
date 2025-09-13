@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 
 class CalorieTankWidget extends StatelessWidget {
   final double progress; // value from 0.0 to 1.0
+  final double consumedKcal;
 
-  const CalorieTankWidget({super.key, required this.progress});
+  const CalorieTankWidget({
+    super.key,
+    required this.consumedKcal,
+    required this.progress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -17,8 +22,8 @@ class CalorieTankWidget extends StatelessWidget {
         Positioned(
           bottom: 8,
           child: Text(
-            '${(progress * 100).toInt()}%',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            '${consumedKcal.toStringAsFixed(0)} kcal',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
         ),
       ],
