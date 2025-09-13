@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:kai/services/macros_service.dart';
 import 'package:kai/services/users_service.dart';
 import 'package:kai/widgets/calorie_tank.dart';
 import 'package:kai/widgets/macro_ring.dart';
 import 'package:kai/widgets/week_progress.dart';
+import 'package:kai/screens/main_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,6 +17,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   DateTime selectedDate = DateTime.now();
   late Future<Map<String, dynamic>?> dashboardData;
+  bool _mealPromptShownForDate = false;
 
   @override
   void initState() {
@@ -28,7 +29,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       selectedDate = date;
       dashboardData = UsersService().getDashboardData(selectedDate);
+      _mealPromptShownForDate = false; // reset prompt for newly selected day
     });
+  }
+
+  void _maybePromptForMeals(Map<String, dynamic> mealsMap) {
+    // Show a one-time prompt per selected day if there are no meals
+    final hasAnyMeals = mealsMap.values.whereType<Map<String, dynamic>>().any(
+      (m) => (m['name'] ?? '').toString().isNotEmpty,
+    );
+    if (!hasAnyMeals && !_mealPromptShownForDate) {
+      _mealPromptShownForDate = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('No meals selected'),
+            content: const Text(
+              "You haven't selected your meals for today. Go to the Meal Planner to choose them now?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Not now'),
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.restaurant_menu),
+                label: const Text('Go to Planner'),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => const MainScreen(initialIndex: 1),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      });
+    }
   }
 
   @override
@@ -65,6 +107,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final data = snapshot.data!;
         final progress = data['progress'];
         final mealsMap = data['meals'] as Map<String, dynamic>;
+        _maybePromptForMeals(mealsMap);
         final macros = data['macros'] as Map<String, dynamic>; // daily targets
         final totals = data['totals'] as Map<String, dynamic>; // consumed today
 
@@ -255,6 +298,28 @@ class _MealsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (mealsMap.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: const [
+              Text(
+                "No meals selected yet",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text(
+                "Meals you pick in the planner will appear here.",
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
