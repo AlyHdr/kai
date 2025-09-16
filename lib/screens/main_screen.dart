@@ -6,7 +6,6 @@ import 'package:kai/screens/meals_plan_screen.dart';
 import 'package:kai/screens/profile_screen.dart';
 import 'package:kai/services/auth_service.dart';
 import 'package:kai/services/subscription_service.dart';
-import 'package:kai/services/subscription_service.dart';
 
 import 'landing_screen.dart';
 
@@ -44,18 +43,15 @@ class _MainScreenState extends State<MainScreen> {
     await _subscription.initListeners();
     _entitlementSub = _subscription.entitlementStream.listen((entitled) {
       if (!mounted) return;
+      final loggingIn = _subscription.isLoggingIn;
       setState(() {
-        print('Entitlement changed: $entitled');
+        print('Entitlement changed: $entitled (loggingIn=$loggingIn)');
         _isEntitled = entitled;
-        _checkingEntitlement = false;
+        // Avoid brief flicker: if we are still logging in to RevenueCat and
+        // entitlement is false, keep showing the spinner until it settles.
+        _checkingEntitlement = loggingIn && !entitled ? true : false;
       });
     });
-    final entitled = await _subscription.isEntitled();
-    if (mounted && !entitled) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await _subscription.presentPaywallIfNeeded();
-      });
-    }
   }
 
   Future<void> _refreshEntitlement() async {

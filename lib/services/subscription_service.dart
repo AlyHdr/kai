@@ -10,8 +10,10 @@ class SubscriptionService {
   final String entitlementId = 'premium';
   final StreamController<bool> _entitlementController =
       StreamController<bool>.broadcast();
+  bool _isLoggingIn = false;
 
   Stream<bool> get entitlementStream => _entitlementController.stream;
+  bool get isLoggingIn => _isLoggingIn;
 
   Future<bool> isEntitled() async {
     final info = await Purchases.getCustomerInfo();
@@ -30,10 +32,13 @@ class SubscriptionService {
 
   Future<void> logIn(String appUserId) async {
     try {
+      _isLoggingIn = true;
       await Purchases.logIn(appUserId);
       await _emitLatest();
     } catch (_) {
       // ignore and rely on entitlement stream remaining unchanged
+    } finally {
+      _isLoggingIn = false;
     }
   }
 
@@ -47,10 +52,11 @@ class SubscriptionService {
   }
 
   Future<void> initListeners() async {
-    await _emitLatest();
+    // Attach listener first to avoid missing initial updates.
     Purchases.addCustomerInfoUpdateListener((_) async {
       await _emitLatest();
     });
+    await _emitLatest();
   }
 
   Future<void> _emitLatest() async {

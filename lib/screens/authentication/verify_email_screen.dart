@@ -35,10 +35,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Email verified successfully!')));
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => MainScreen()),
-      );
+      // Return to the LandingScreen; it will render MainScreen via auth stream.
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } else {
       setState(() => _isChecking = false);
       ScaffoldMessenger.of(

@@ -36,10 +36,8 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         print('User logged in: ${user?.email}');
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => MainScreen()),
-        );
+        // Return to the LandingScreen; it will render MainScreen via auth stream.
+        if (mounted) Navigator.of(context).pop();
       }
     } catch (e) {
       print('Login error: $e');
