@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final AuthService _authService = AuthService();
 
   String? _error;
+  bool _sendingReset = false;
 
   void _login() async {
     try {
@@ -42,6 +43,82 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       print('Login error: $e');
       setState(() => _error = e.toString());
+    }
+  }
+
+  Future<void> _promptPasswordReset() async {
+    final controller = TextEditingController(
+      text: _emailController.text.trim(),
+    );
+    String? localError;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset password'),
+        backgroundColor: Colors.white,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter your account email to receive a reset link.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: 'email@example.com',
+                errorText: localError,
+              ),
+              onChanged: (_) {
+                if (localError != null) {
+                  setState(() {});
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+            style: TextButton.styleFrom(foregroundColor: Colors.black),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Send link'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.greenAccent,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final email = controller.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter your email.')));
+      return;
+    }
+
+    try {
+      setState(() => _sendingReset = true);
+      await _authService.sendPasswordResetEmail(email);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Reset link sent to $email')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send reset email: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sendingReset = false);
     }
   }
 
@@ -92,6 +169,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               child: Text('Login'),
+            ),
+            TextButton(
+              onPressed: _sendingReset ? null : _promptPasswordReset,
+              child: _sendingReset
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Forgot password?'),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
