@@ -53,7 +53,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
   change_app_package_name: ^1.4.0
-
+  flutter_launcher_icons: ^0.14.4
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -71,6 +71,21 @@ flutter:
     - assets/images/logo-transparent.png
     - assets/images/logo-only.png
     - assets/animations/floating_sphere_animation.json
+
+# App icon generation (flutter_launcher_icons)
+flutter_launcher_icons:
+  android: true
+  ios: true
+  # Android (adaptive) — set white background, logo as foreground
+  image_path_android: assets/images/logo-only.png
+  adaptive_icon_foreground: assets/images/logo-only.png
+  adaptive_icon_background: "#FFFFFF"
+  min_sdk_android: 21
+  # iOS — provide a precomposed, non-transparent square icon asset
+  # Create this file with a white (or brand) background behind the logo.
+  image_path_ios: assets/images/logo-only.png
+  background_color_ios: "#FFFFFF"
+  remove_alpha_ios: false
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
