@@ -107,6 +107,38 @@
           "winbackOffers" : [
 
           ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "39.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "E69BB381",
+          "introductoryOffer" : {
+            "internalID" : "61C55190",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "",
+              "displayName" : "",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "kai_3999_1y_1w0",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Annually $39.99, 1-week free",
+          "subscriptionGroupID" : "20275148",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
         }
       ]
     }

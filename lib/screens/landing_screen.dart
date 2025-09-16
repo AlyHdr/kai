@@ -1,9 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kai/screens/authentication/login_screen.dart';
 import 'package:kai/screens/main_screen.dart';
 import 'package:lottie/lottie.dart';
 import 'onboarding/onboarding_flow.dart';
+import 'package:kai/services/subscription_service.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
@@ -18,8 +20,17 @@ class LandingScreen extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         } else if (snapshot.hasData) {
+          // Ensure RevenueCat is identified with Firebase UID
+          final uid = snapshot.data!.uid;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            SubscriptionService.instance.logIn(uid);
+          });
           return const MainScreen();
         } else {
+          // When logged out, ensure RevenueCat uses anonymous id
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            SubscriptionService.instance.logOut();
+          });
           return Scaffold(
             backgroundColor: Colors.white,
             body: Center(

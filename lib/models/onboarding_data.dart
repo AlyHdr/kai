@@ -8,7 +8,6 @@ class OnboardingData {
   DateTime? dateOfBirth;
   String? goal;
   String? dietPreference;
-  bool isTrial = true;
   @override
   String toString() {
     return 'OnboardingData(gender: $gender, heightCm: $heightCm, weightKg: $weightKg, activityLevel: $activityLevel dateOfBirth: $dateOfBirth goal: $goal dietPreference: $dietPreference)';
@@ -24,7 +23,6 @@ class OnboardingData {
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'goal': goal,
       'dietPreference': dietPreference,
-      'isTrial': isTrial,
     };
   }
 }

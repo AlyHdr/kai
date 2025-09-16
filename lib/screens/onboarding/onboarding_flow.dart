@@ -123,7 +123,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             },
           ),
           RegistrationStep(
-            onRegister: (fullName, email, password, isTrial) async {
+            onRegister: (fullName, email, password) async {
               try {
                 final userCredentials = await _authService.signUp(
                   email,
@@ -133,7 +133,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
                 if (uid != null) {
                   setState(() {
-                    data.isTrial = isTrial;
                     data.fullName = fullName;
                   });
 

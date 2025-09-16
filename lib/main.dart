@@ -5,14 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:kai/screens/landing_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
   await initPlatformState();
+  runApp(const MyApp());
 }
 
 Future<void> initPlatformState() async {
@@ -29,11 +29,20 @@ Future<void> initPlatformState() async {
     configuration = PurchasesConfiguration(rciOSKey);
   }
   if (configuration != null) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null && uid.isNotEmpty) {
+      configuration.appUserID = uid;
+    }
     await Purchases.configure(configuration);
-    final paywallResult = await RevenueCatUI.presentPaywallIfNeeded('premium');
-    print('Paywall presented: $paywallResult');
   } else {
-    print('Unsupported platform for Purchases');
+    // Helpful diagnostics when keys are missing or not injected
+    if (Platform.isAndroid && rcAndroidKey.isEmpty) {
+      print('[Purchases] Missing RC_ANDROID_SDK_KEY. Pass via --dart-define or env.json');
+    } else if (Platform.isIOS && rciOSKey.isEmpty) {
+      print('[Purchases] Missing RC_IOS_SDK_KEY. Pass via --dart-define or env.json');
+    } else {
+      print('Unsupported platform for Purchases');
+    }
   }
 }
 // Future<void> testHello() async {

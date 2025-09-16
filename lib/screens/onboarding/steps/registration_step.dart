@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../widgets/step_button.dart';
 
 class RegistrationStep extends StatefulWidget {
-  final Function(String fullName, String email, String password, bool isTrial)
-  onRegister;
+  final Future<void> Function(String fullName, String email, String password)
+      onRegister;
 
   const RegistrationStep({super.key, required this.onRegister});
 
@@ -16,7 +16,7 @@ class _RegistrationStepState extends State<RegistrationStep> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
-  bool isTrial = true;
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -24,10 +24,6 @@ class _RegistrationStepState extends State<RegistrationStep> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  void _togglePlan(bool trial) {
-    setState(() => isTrial = trial);
   }
 
   @override
@@ -43,58 +39,11 @@ class _RegistrationStepState extends State<RegistrationStep> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8),
-          Text('Start your 3-day free trial or get full access for \$9.99.'),
-          SizedBox(height: 32),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _togglePlan(true),
-                  child: Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isTrial ? Colors.greenAccent : Color(0xFFF7F6FA),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '3-Day Trial',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _togglePlan(false),
-                  child: Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: !isTrial ? Colors.greenAccent : Color(0xFFF7F6FA),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '\$9.99 Full Access',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          Text('Start your 7-day free trial. You can cancel anytime.'),
           SizedBox(height: 32),
           TextField(
             controller: _fullNameController,
+            onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               labelText: 'Full Name',
               prefixIcon: Icon(Icons.person, color: Colors.greenAccent),
@@ -107,6 +56,7 @@ class _RegistrationStepState extends State<RegistrationStep> {
           TextField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
+            onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               labelText: 'Email Address',
               prefixIcon: Icon(Icons.email, color: Colors.greenAccent),
@@ -118,6 +68,7 @@ class _RegistrationStepState extends State<RegistrationStep> {
           SizedBox(height: 32),
           TextField(
             controller: _passwordController,
+            onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               labelText: 'Password',
               prefixIcon: Icon(Icons.lock, color: Colors.greenAccent),
@@ -134,13 +85,20 @@ class _RegistrationStepState extends State<RegistrationStep> {
                 _emailController.text.isNotEmpty &&
                 _passwordController.text.isNotEmpty &&
                 _fullNameController.text.isNotEmpty,
-            label: 'Register',
-            onPressed: () => widget.onRegister(
-              _fullNameController.text.trim(),
-              _emailController.text.trim(),
-              _passwordController.text.trim(),
-              isTrial,
-            ),
+            busy: _loading,
+            label: _loading ? 'Registering...' : 'Register',
+            onPressed: () async {
+              setState(() => _loading = true);
+              try {
+                await widget.onRegister(
+                  _fullNameController.text.trim(),
+                  _emailController.text.trim(),
+                  _passwordController.text.trim(),
+                );
+              } finally {
+                if (mounted) setState(() => _loading = false);
+              }
+            },
           ),
         ],
       ),
