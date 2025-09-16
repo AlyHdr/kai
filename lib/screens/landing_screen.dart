@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kai/screens/authentication/login_screen.dart';
+import 'package:kai/screens/authentication/verify_email_screen.dart';
 import 'package:kai/screens/main_screen.dart';
 import 'package:lottie/lottie.dart';
 import 'onboarding/onboarding_flow.dart';
@@ -20,12 +21,22 @@ class LandingScreen extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         } else if (snapshot.hasData) {
-          // Ensure RevenueCat is identified with Firebase UID
-          final uid = snapshot.data!.uid;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            SubscriptionService.instance.logIn(uid);
-          });
-          return const MainScreen();
+          final user = snapshot.data!;
+          // Gate the app by email verification status
+          if (user.emailVerified) {
+            // Ensure RevenueCat is identified with Firebase UID only when verified
+            final uid = user.uid;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              SubscriptionService.instance.logIn(uid);
+            });
+            return const MainScreen();
+          } else {
+            // Keep RevenueCat logged out for unverified accounts
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              SubscriptionService.instance.logOut();
+            });
+            return VerifyEmailScreen(user: user);
+          }
         } else {
           // When logged out, ensure RevenueCat uses anonymous id
           WidgetsBinding.instance.addPostFrameCallback((_) {
