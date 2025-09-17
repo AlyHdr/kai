@@ -41,6 +41,7 @@ dependencies:
   cloud_functions: ^5.6.1
   purchases_flutter: ^9.5.0
   purchases_ui_flutter: ^9.5.0
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

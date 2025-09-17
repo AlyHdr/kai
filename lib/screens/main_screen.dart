@@ -5,6 +5,7 @@ import 'package:kai/screens/dashboard_screen.dart';
 import 'package:kai/screens/meals_plan_screen.dart';
 import 'package:kai/screens/profile_screen.dart';
 import 'package:kai/services/auth_service.dart';
+import 'package:kai/screens/settings_screen.dart';
 import 'package:kai/services/subscription_service.dart';
 
 import 'landing_screen.dart';
@@ -74,9 +75,11 @@ class _MainScreenState extends State<MainScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.black),
+          icon: const Icon(Icons.settings, color: Colors.black),
           onPressed: () {
-            // Handle menu button press
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            );
           },
         ),
         actions: [
@@ -113,6 +116,13 @@ class _MainScreenState extends State<MainScreen> {
                 await _subscription.presentPaywallIfNeeded();
                 await _refreshEntitlement();
               },
+              onRestore: () async {
+                await _subscription.restorePurchases();
+                await _refreshEntitlement();
+              },
+              onManage: () async {
+                await _subscription.openManageSubscriptions();
+              },
             ),
       bottomNavigationBar: BottomNavigationBar(
         fixedColor: Colors.greenAccent,
@@ -135,8 +145,14 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 class _SubscriptionRequired extends StatelessWidget {
-  const _SubscriptionRequired({required this.onSubscribe});
+  const _SubscriptionRequired({
+    required this.onSubscribe,
+    required this.onRestore,
+    required this.onManage,
+  });
   final Future<void> Function() onSubscribe;
+  final Future<void> Function() onRestore;
+  final Future<void> Function() onManage;
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +188,15 @@ class _SubscriptionRequired extends StatelessWidget {
               onPressed: onSubscribe,
               child: const Text('Subscribe / Start Free Trial'),
             ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: onRestore,
+            child: const Text('Restore Purchases'),
+          ),
+          TextButton(
+            onPressed: onManage,
+            child: const Text('Manage Subscription'),
           ),
         ],
       ),

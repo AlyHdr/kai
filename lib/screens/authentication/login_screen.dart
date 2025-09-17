@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:kai/screens/landing_screen.dart';
 import 'package:kai/screens/authentication/verify_email_screen.dart';
-import 'package:kai/screens/main_screen.dart';
 import 'package:kai/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -79,15 +78,15 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
             style: TextButton.styleFrom(foregroundColor: Colors.black),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Send link'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.greenAccent,
             ),
+            child: const Text('Send link'),
           ),
         ],
       ),

@@ -540,7 +540,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   max: 300,
                 ),
               ),
-
               const SizedBox(height: 8),
             ],
           ),

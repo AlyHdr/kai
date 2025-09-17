@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SubscriptionService {
   SubscriptionService._internal();
@@ -28,6 +30,15 @@ class SubscriptionService {
   Future<void> restorePurchases() async {
     await Purchases.restorePurchases();
     await _emitLatest();
+  }
+
+  Future<void> openManageSubscriptions() async {
+    final uri = Platform.isIOS
+        ? Uri.parse('https://apps.apple.com/account/subscriptions')
+        : Uri.parse('https://play.google.com/store/account/subscriptions');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> logIn(String appUserId) async {
