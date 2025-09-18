@@ -15,10 +15,34 @@ class MacrosService {
     print("Macros: $macrosData");
     if (macrosData is Map<String, dynamic>) {
       // Normalize key naming: ensure 'proteins' exists for targets
-      if (!macrosData.containsKey('proteins') && macrosData.containsKey('protein')) {
+      if (!macrosData.containsKey('proteins') &&
+          macrosData.containsKey('protein')) {
         macrosData['proteins'] = macrosData['protein'];
       }
       // Save the generated macros to the user's document
+      await UsersService().updateMacros(uid, macrosData);
+    } else {
+      throw Exception('Invalid macros data received');
+    }
+  }
+
+  /// Generate macros directly from a saved user document map.
+  /// Expects keys like: dateOfBirth (ISO string), weightKg, heightCm, gender,
+  /// activityLevel, goal, dietPreference.
+  Future<void> generateMacrosFromUserData(
+    Map<String, dynamic> userData,
+    String uid,
+  ) async {
+    final result = await FirebaseFunctions.instance
+        .httpsCallable('generate_macros')
+        .call(userData);
+
+    final macrosData = result.data;
+    if (macrosData is Map<String, dynamic>) {
+      if (!macrosData.containsKey('proteins') &&
+          macrosData.containsKey('protein')) {
+        macrosData['proteins'] = macrosData['protein'];
+      }
       await UsersService().updateMacros(uid, macrosData);
     } else {
       throw Exception('Invalid macros data received');

@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:kai/models/onboarding_data.dart';
 import 'package:kai/services/users_service.dart';
+import 'package:kai/services/macros_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kai/widgets/calorie_tank.dart';
 import 'package:kai/widgets/macro_ring.dart';
 import 'package:kai/widgets/week_progress.dart';
@@ -18,6 +21,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DateTime selectedDate = DateTime.now();
   late Future<Map<String, dynamic>?> dashboardData;
   bool _mealPromptShownForDate = false;
+  bool _macrosPromptShown = false;
 
   @override
   void initState() {
@@ -73,6 +77,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _maybePromptGenerateMacros() {
+    if (_macrosPromptShown) return;
+    _macrosPromptShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Generate your targets?'),
+          content: const Text(
+            'I could not find your daily targets. Let me generate them now to unlock your dashboard?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Not now'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                try {
+                  final data = await UsersService().getUserData();
+                  final uid = FirebaseAuth.instance.currentUser?.uid;
+                  if (data == null || uid == null) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Missing user data.')),
+                    );
+                    return;
+                  }
+
+                  await MacrosService().generateMacrosFromUserData(data, uid);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Macros generated.')),
+                  );
+                  setState(() {
+                    dashboardData = UsersService().getDashboardData(
+                      selectedDate,
+                    );
+                  });
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to generate macros: $e')),
+                  );
+                }
+              },
+              child: const Text('Generate now'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>?>(
@@ -85,19 +146,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
 
         if (!snapshot.hasData || snapshot.data == null) {
+          _maybePromptGenerateMacros();
           return Scaffold(
             body: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text("No macros found."),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Trigger macro generation
-                    },
-                    child: const Text("Generate Macros"),
-                  ),
+                children: const [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 12),
+                  Text('Preparing your dashboard…'),
                 ],
               ),
             ),
