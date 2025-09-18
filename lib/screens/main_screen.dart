@@ -23,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   final AuthService _authService = AuthService();
   bool _isEntitled = true;
-  bool _checkingEntitlement = true;
+  bool _checkingEntitlement = false;
   final SubscriptionService _subscription = SubscriptionService.instance;
   StreamSubscription<bool>? _entitlementSub;
 
@@ -53,6 +53,23 @@ class _MainScreenState extends State<MainScreen> {
         _checkingEntitlement = loggingIn && !entitled ? true : false;
       });
     });
+    // Proactively refresh once to avoid getting stuck in a spinner
+    try {
+      await _refreshEntitlement();
+    } catch (_) {}
+    // Safety net: ensure we never block indefinitely
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      if (_checkingEntitlement) {
+        setState(() => _checkingEntitlement = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _entitlementSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _refreshEntitlement() async {

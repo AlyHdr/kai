@@ -18,6 +18,7 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
   late final String _uid;
   late final String _dateId; // yyyy-MM-dd
   bool _generationTriggered = false;
+  String? _genError;
 
   // Option sources (customize freely)
   static const List<String> cuisines = <String>[
@@ -199,14 +200,24 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
         // Save the generated plan to Firestore
         if (result.data != null && result.data is Map<String, dynamic>) {
           await _planDoc.set(result.data as Map<String, dynamic>);
+          if (mounted) setState(() => _genError = null);
+        } else {
+          // Generation failed to return a valid plan structure
+          if (mounted) {
+            setState(() {
+              _genError = 'Plan generation returned an unexpected format.';
+              _generationTriggered = false; // allow retry
+            });
+          }
         }
       }
     } catch (e) {
       if (mounted) {
         print('Error generating plan: $e');
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to generate plan: $e')));
+        setState(() {
+          _genError = 'Failed to generate plan: $e';
+          _generationTriggered = false; // allow retry
+        });
       }
     }
   }
@@ -233,8 +244,19 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
           final doc = snapshot.data;
 
           if (doc == null || !doc.exists) {
-            // Trigger generation once; show a generating state.
+            // Trigger generation once; show a generating state or error state.
             _ensurePlanExistsOnce();
+            if (_genError != null) {
+              return _ErrorState(
+                message: _genError!,
+                onRetry: () {
+                  setState(() {
+                    _genError = null;
+                    _generationTriggered = false;
+                  });
+                },
+              );
+            }
             return const _CenteredProgress('Generating your plan...');
           }
 
@@ -299,7 +321,8 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                     try {
                       final prefs = await _promptMealPreferences();
                       // Use Functions emulator only in debug/profile builds
-                      if (const bool.fromEnvironment('dart.vm.product') == false) {
+                      if (const bool.fromEnvironment('dart.vm.product') ==
+                          false) {
                         FirebaseFunctions.instance.useFunctionsEmulator(
                           'localhost',
                           5001,
