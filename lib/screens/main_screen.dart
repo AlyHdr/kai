@@ -82,30 +82,7 @@ class _MainScreenState extends State<MainScreen> {
             );
           },
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black),
-            onPressed: () {
-              // Handle notifications button press
-              _authService
-                  .signOut()
-                  .then((_) {
-                    SubscriptionService.instance.logOut();
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LandingScreen(),
-                      ),
-                    );
-                  })
-                  .catchError((error) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error signing out: $error')),
-                    );
-                  });
-            },
-          ),
-        ],
+        actions: const [],
       ),
       body: _checkingEntitlement
           ? const Center(child: CircularProgressIndicator())

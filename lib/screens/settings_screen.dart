@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kai/screens/landing_screen.dart';
 import 'package:kai/services/subscription_service.dart';
+import 'package:kai/services/auth_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,6 +15,15 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _deleting = false;
+  bool _loggingOut = false;
+  bool get _isPasswordUser {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    final email = user.email;
+    return user.providerData.any(
+      (p) => p.providerId == 'password' && email != null,
+    );
+  }
 
   Future<void> _deleteCollection(
     CollectionReference<Map<String, dynamic>> ref, {
@@ -164,6 +174,202 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _logOut() async {
+    setState(() => _loggingOut = true);
+    try {
+      await AuthService().signOut();
+      await SubscriptionService.instance.logOut();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LandingScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to log out: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _loggingOut = false);
+    }
+  }
+
+  Future<void> _changeEmail() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    String newEmail = user.email ?? '';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Change email'),
+        content: TextField(
+          autofocus: true,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: 'New email',
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (v) => newEmail = v.trim(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    if (newEmail.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Email cannot be empty.')));
+      return;
+    }
+
+    try {
+      // Reauth when needed
+      final ok = await _reauthenticateIfNeeded();
+      if (!ok) return;
+
+      await user.verifyBeforeUpdateEmail(newEmail);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Verification email sent to $newEmail. Open the link to finalize the change.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update email: $e')));
+      }
+    }
+  }
+
+  Future<void> _changePassword() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    if (!_isPasswordUser) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Password change is only available for email/password users.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    String current = '';
+    String next = '';
+    String confirm = '';
+    String? error;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSB) => AlertDialog(
+          title: const Text('Change password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Current password',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => current = v,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'New password (min 6 chars)',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => next = v,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm new password',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => confirm = v,
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(error!, style: const TextStyle(color: Colors.red)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (next.length < 6) {
+                  setSB(
+                    () => error = 'New password must be at least 6 characters.',
+                  );
+                  return;
+                }
+                if (next != confirm) {
+                  setSB(() => error = 'Passwords do not match.');
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+
+    try {
+      final email = user.email;
+      if (email == null) throw 'No email associated with this account';
+      // Reauth with current password
+      final cred = EmailAuthProvider.credential(
+        email: email,
+        password: current,
+      );
+      await user.reauthenticateWithCredential(cred);
+      // Update password
+      await user.updatePassword(next);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Password updated.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update password: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const termsUrl = String.fromEnvironment('TERMS_URL');
@@ -179,6 +385,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           ListView(
             children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'Account',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                title: const Text('Change email'),
+                trailing: const Icon(Icons.alternate_email),
+                onTap: _changeEmail,
+              ),
+              ListTile(
+                title: const Text('Change password'),
+                trailing: const Icon(Icons.password),
+                onTap: _changePassword,
+              ),
+              ListTile(
+                title: const Text('Log out'),
+                trailing: const Icon(Icons.logout),
+                onTap: _logOut,
+              ),
+
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Text(
@@ -267,7 +496,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
             ],
           ),
-          if (_deleting)
+          if (_deleting || _loggingOut)
             Positioned.fill(
               child: Container(
                 color: Colors.black45,
@@ -277,10 +506,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       CircularProgressIndicator(),
                       SizedBox(height: 12),
-                      Text(
-                        'Deleting account…',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      Text('Working…', style: TextStyle(color: Colors.white)),
                     ],
                   ),
                 ),
