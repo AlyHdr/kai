@@ -150,7 +150,7 @@ def create_enhanced_prompt(data, recent_meals=None):
     total_carbs = macros.get('carbs')
     total_fats = macros.get('fats')
 
-    prompt = f"""Generate a unique daily meal plan for {current_date} with EXACTLY 3 diverse options for EACH of these meals:
+    prompt = f"""Generate a unique daily meal plan for one person for {current_date} with EXACTLY 3 diverse options for EACH of these meals:
 - breakfast
 - lunch
 - dinner
