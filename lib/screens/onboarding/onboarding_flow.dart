@@ -138,27 +138,23 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
                   await _userService.createUser(uid, data);
                   await userCredentials.user?.sendEmailVerification();
-                  await _macrosService
-                      .generateMacros(data, uid)
-                      .then((_) {
-                        // Navigate to the next screen or show a success message
-                        print("Onboarding completed with data: $data");
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                VerifyEmailScreen(user: userCredentials.user!),
-                          ),
-                        );
-                      })
-                      .catchError((error) {
-                        print("Error generating macros: $error");
-                      });
+                  await _macrosService.generateMacros(data, uid);
+
+                  // Navigate to email verification screen once all succeeded
+                  if (!mounted) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          VerifyEmailScreen(user: userCredentials.user!),
+                    ),
+                  );
                 } else {
-                  print('User UID is null');
+                  throw Exception('User UID is null');
                 }
               } catch (error) {
-                print('Registration error: $error');
+                // Allow RegistrationStep to surface the error to the user
+                rethrow;
               }
             },
           ),
