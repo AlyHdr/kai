@@ -82,9 +82,7 @@ flutter_launcher_icons:
   min_sdk_android: 21
   # iOS — provide a precomposed, non-transparent square icon asset
   # Create this file with a white (or brand) background behind the logo.
-  image_path_ios: assets/images/logo-only.png
-  background_color_ios: "#FFFFFF"
-  remove_alpha_ios: true
+  image_path_ios: assets/images/logo-white.png
 
 # Splash screen generation (flutter_native_splash)
 flutter_native_splash:
