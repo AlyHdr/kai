@@ -73,18 +73,21 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       .collection('intake')
       .doc(_dateId);
 
-  /// Prompts the user for cuisine and protein preferences.
+  /// Prompts the user for cuisine, protein preferences, and optional custom notes.
   /// Returns a map shaped like:
   /// {
   ///   'cuisine': String,
-  ///   'proteins': {'breakfast': String, 'lunch': String, 'dinner': String}
+  ///   'proteins': {'breakfast': String, 'lunch': String, 'dinner': String},
+  ///   'custom': String (optional free text for LLM)
   /// }
-  /// If the dialog is dismissed, returns sensible 'any' defaults.
-  Future<Map<String, dynamic>> _promptMealPreferences() async {
+  /// If the dialog is dismissed or Skip is pressed, returns null (treat as cancel).
+  Future<Map<String, dynamic>?> _promptMealPreferences() async {
     String cuisine = 'any';
     String proteinBreakfast = 'any';
     String proteinLunch = 'any';
     String proteinDinner = 'any';
+    String customText = '';
+    final customController = TextEditingController();
 
     // Show the dialog; keep local state with StatefulBuilder
     final result = await showDialog<bool>(
@@ -138,6 +141,18 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                       value: proteinDinner,
                       onChanged: (v) => setLocal(() => proteinDinner = v),
                     ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: customController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Custom preferences (optional)',
+                        hintText:
+                            'e.g., avoid mushrooms, lactose-free, prefer air fryer, budget-friendly, quick prep',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (v) => setLocal(() => customText = v),
+                    ),
                   ],
                 ),
               );
@@ -157,7 +172,10 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       },
     );
 
-    // If user pressed Apply or Skip, return current selections (defaults remain 'any')
+    // Cancel if user pressed Skip or dismissed the dialog.
+    if (result != true) return null;
+
+    // Apply with current selections
     return {
       'cuisine': cuisine,
       'proteins': {
@@ -165,50 +183,53 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
         'lunch': proteinLunch,
         'dinner': proteinDinner,
       },
+      if (customText.trim().isNotEmpty) 'custom': customText.trim(),
     };
   }
 
-  Future<void> _ensurePlanExistsOnce() async {
-    if (_generationTriggered) return; // prevent multiple calls
-    _generationTriggered = true;
+  Future<void> _startGeneration({bool force = false}) async {
+    if (_generationTriggered) return;
+    final prefs = await _promptMealPreferences();
+    if (prefs == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Plan generation canceled')),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _generationTriggered = true;
+      _genError = null;
+    });
+
     try {
-      final snap = await _planDoc.get();
-      if (!snap.exists) {
-        // Ask for preferences before generating
-        final preferences = await _promptMealPreferences();
+      // Use Functions emulator only in debug/profile builds
+      if (const bool.fromEnvironment('dart.vm.product') == false) {
+        FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
+      }
 
-        // If using emulator locally, keep this (you can guard by assert if needed)
-        // if (const bool.fromEnvironment('dart.vm.product') == false) {
-        //   FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
-        // }
+      final userData = await UsersService().getUserData();
+      final payload = {
+        ...userData!,
+        'preferences': prefs,
+        'dateId': _dateId,
+        if (force) 'forceRegenerate': true,
+      };
 
-        var userData = await UsersService().getUserData();
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('generate_meal_plan')
+          .call(payload);
 
-        // Merge preferences into the payload sent to the callable
-        final payload = {
-          ...userData!,
-          'preferences': preferences,
-          // You can add date if the CF expects it
-          'dateId': _dateId,
-        };
-        final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
-
-        final result = await functions
-            .httpsCallable('generate_meal_plan')
-            .call(payload);
-
-        // Save the generated plan to Firestore
-        if (result.data != null && result.data is Map<String, dynamic>) {
-          await _planDoc.set(result.data as Map<String, dynamic>);
-          if (mounted) setState(() => _genError = null);
-        } else {
-          // Generation failed to return a valid plan structure
-          if (mounted) {
-            setState(() {
-              _genError = 'Plan generation returned an unexpected format.';
-              _generationTriggered = false; // allow retry
-            });
-          }
+      if (result.data != null && result.data is Map<String, dynamic>) {
+        await _planDoc.set(result.data as Map<String, dynamic>);
+        if (mounted) setState(() => _genError = null);
+      } else {
+        if (mounted) {
+          setState(() {
+            _genError = 'Plan generation returned an unexpected format.';
+          });
         }
       }
     } catch (e) {
@@ -216,9 +237,10 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
         print('Error generating plan: $e');
         setState(() {
           _genError = 'Failed to generate plan: $e';
-          _generationTriggered = false; // allow retry
         });
       }
+    } finally {
+      if (mounted) setState(() => _generationTriggered = false);
     }
   }
 
@@ -229,8 +251,6 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
         stream: _planDoc.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            // Also proactively ensure the plan exists.
-            _ensurePlanExistsOnce();
             return const _CenteredProgress('Loading your plan...');
           }
 
@@ -244,20 +264,16 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
           final doc = snapshot.data;
 
           if (doc == null || !doc.exists) {
-            // Trigger generation once; show a generating state or error state.
-            _ensurePlanExistsOnce();
             if (_genError != null) {
               return _ErrorState(
                 message: _genError!,
-                onRetry: () {
-                  setState(() {
-                    _genError = null;
-                    _generationTriggered = false;
-                  });
-                },
+                onRetry: () => setState(() => _genError = null),
               );
             }
-            return const _CenteredProgress('Generating your plan...');
+            if (_generationTriggered) {
+              return const _CenteredProgress('Generating your plan...');
+            }
+            return _EmptyPlanCta(onGenerate: () => _startGeneration());
           }
 
           final data = doc.data()!;
@@ -319,37 +335,13 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                 OutlinedButton.icon(
                   onPressed: () async {
                     try {
-                      final prefs = await _promptMealPreferences();
-                      // Use Functions emulator only in debug/profile builds
-                      if (const bool.fromEnvironment('dart.vm.product') ==
-                          false) {
-                        FirebaseFunctions.instance.useFunctionsEmulator(
-                          'localhost',
-                          5001,
+                      await _startGeneration(force: true);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Plan regenerated with preferences'),
+                          ),
                         );
-                      }
-                      var userData = await UsersService().getUserData();
-                      final payload = {
-                        ...userData!,
-                        'preferences': prefs,
-                        'dateId': _dateId,
-                        'forceRegenerate': true,
-                      };
-                      final result = await FirebaseFunctions.instance
-                          .httpsCallable('generate_meal_plan')
-                          .call(payload);
-                      if (result.data != null &&
-                          result.data is Map<String, dynamic>) {
-                        await _planDoc.set(result.data as Map<String, dynamic>);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Plan regenerated with preferences',
-                              ),
-                            ),
-                          );
-                        }
                       }
                     } catch (e) {
                       if (mounted) {
@@ -835,6 +827,44 @@ class _ErrorState extends StatelessWidget {
           const SizedBox(height: 8),
           OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
         ],
+      ),
+    );
+  }
+}
+
+class _EmptyPlanCta extends StatelessWidget {
+  const _EmptyPlanCta({required this.onGenerate});
+  final VoidCallback onGenerate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'No plan for today yet.',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tap the button below to set preferences and generate your daily plan.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onGenerate,
+              icon: const Icon(Icons.restaurant_menu),
+              label: const Text('Generate Plan'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.greenAccent,
+                minimumSize: const Size(200, 44),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

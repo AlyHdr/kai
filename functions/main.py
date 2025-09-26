@@ -78,7 +78,7 @@ def generate_macros(req: https_fn.CallableRequest):
     )
 
     response = client.responses.parse(
-        model="gpt-4o",
+        model="gpt-5-mini",
         input=[        
             {"role": "system", "content": "You are an expert in nutrtion and fitness. Help the user with their daily macronutrient needs."},
             {"role": "user", "content": prompt}
@@ -109,7 +109,7 @@ def generate_meal_plan(req: https_fn.CallableRequest):
 
     try:
         response = client.responses.parse(   # 👈 use `.parse` here
-            model="gpt-4o-mini",               
+            model="gpt-5-mini",               
             input=[
                 {
                     "role": "system",
@@ -142,6 +142,7 @@ def create_enhanced_prompt(data, recent_meals=None):
     protein_lunch = proteins.get('lunch', 'any')
     protein_dinner = proteins.get('dinner', 'any')
     protein_snack = proteins.get('snack', 'any')  # NEW
+    custom_text = (prefs.get('custom') or '').strip()
 
     # Be tolerant to 'protein' vs 'proteins' in user's saved macros
     macros = data.get('macros', {}) or {}
@@ -196,6 +197,14 @@ Each meal must include:
 - Preparation instructions
 
 Ensure nutritional accuracy and that meals are practical to prepare."""
+    
+    # Append user-provided custom guidance if available
+    if custom_text:
+        prompt += f"""
+
+ADDITIONAL USER PREFERENCES TO RESPECT:
+{custom_text}
+"""
     return prompt
 
 def get_user_recent_meals(user_id: str, days_back: int = 7, max_meals: int = 15) -> List[str]:
