@@ -217,23 +217,14 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
         ...userData,
         'preferences': prefs,
         'dateId': _dateId,
+        'progressive': true,
         if (force) 'forceRegenerate': true,
       };
 
-      final result = await FirebaseFunctions.instance
+      await FirebaseFunctions.instance
           .httpsCallable('generate_meal_plan')
           .call(payload);
-
-      if (result.data != null && result.data is Map<String, dynamic>) {
-        await _planDoc.set(result.data as Map<String, dynamic>);
-        if (mounted) setState(() => _genError = null);
-      } else {
-        if (mounted) {
-          setState(() {
-            _genError = 'Plan generation returned an unexpected format.';
-          });
-        }
-      }
+      if (mounted) setState(() => _genError = null);
     } catch (e) {
       if (mounted) {
         print('Error generating plan: $e');
@@ -280,6 +271,8 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
 
           final data = doc.data()!;
           final meals = (data as Map<String, dynamic>?) ?? {};
+          final status = meals['status'] as String?;
+          final progress = meals['progress'] as Map<String, dynamic>?;
           final selected = (data['selected'] as Map<String, dynamic>?) ?? {};
 
           return RefreshIndicator(
@@ -290,6 +283,27 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (status == 'generating')
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Generating… ${(progress?['stage'] ?? '')} ${progress?['percent'] != null ? '(${progress!['percent']}%)' : ''}',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 _TotalsCard(intakeDoc: _intakeDoc),
                 const SizedBox(height: 16),
                 _MealSection(
@@ -299,6 +313,9 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                       .map((e) => e as Map<String, dynamic>)
                       .toList(),
                   selected: selected['breakfast'],
+                  pending:
+                      status == 'generating' &&
+                      ((meals['breakfast'] as List<dynamic>? ?? []).isEmpty),
                   onPick: (meal) => _selectMeal('breakfast', meal),
                 ),
                 const SizedBox(height: 16),
@@ -309,6 +326,9 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                       .map((e) => e as Map<String, dynamic>)
                       .toList(),
                   selected: selected['lunch'],
+                  pending:
+                      status == 'generating' &&
+                      ((meals['lunch'] as List<dynamic>? ?? []).isEmpty),
                   onPick: (meal) => _selectMeal('lunch', meal),
                 ),
                 const SizedBox(height: 16),
@@ -319,6 +339,9 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                       .map((e) => e as Map<String, dynamic>)
                       .toList(),
                   selected: selected['dinner'],
+                  pending:
+                      status == 'generating' &&
+                      ((meals['dinner'] as List<dynamic>? ?? []).isEmpty),
                   onPick: (meal) => _selectMeal('dinner', meal),
                 ),
                 const SizedBox(height: 16),
@@ -329,6 +352,9 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                       .map((e) => e as Map<String, dynamic>)
                       .toList(),
                   selected: selected['snack'],
+                  pending:
+                      status == 'generating' &&
+                      ((meals['snack'] as List<dynamic>? ?? []).isEmpty),
                   onPick: (meal) => _selectMeal('snack', meal),
                 ),
                 const SizedBox(height: 12),
@@ -341,7 +367,7 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Plan regenerated with preferences'),
+                            content: Text('Regeneration started…'),
                           ),
                         );
                       }
@@ -495,6 +521,7 @@ class _MealSection extends StatelessWidget {
     required this.options,
     required this.selected,
     required this.onPick,
+    this.pending = false,
   });
 
   final String title;
@@ -502,6 +529,7 @@ class _MealSection extends StatelessWidget {
   final List<Map<String, dynamic>> options;
   final dynamic selected; // Map or null
   final void Function(Map<String, dynamic> meal) onPick;
+  final bool pending;
 
   @override
   Widget build(BuildContext context) {
@@ -550,6 +578,15 @@ class _MealSection extends StatelessWidget {
                 children: options
                     .map((m) => _OptionTile(meal: m, onPick: onPick))
                     .toList(),
+              )
+            else if (pending)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text('Generating options…'),
+                  SizedBox(height: 8),
+                  LinearProgressIndicator(),
+                ],
               )
             else
               const Text('No options available yet.'),
