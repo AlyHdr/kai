@@ -24,7 +24,7 @@ client = OpenAI(
     )
 
 
-cred = credentials.Certificate("kai-nutrition-assistant-firebase-adminsdk-fbsvc-ff82cd7006.json")
+cred = credentials.Certificate("firebase-service-account.json")
 
 app = initialize_app(cred)
 db = firestore.client()

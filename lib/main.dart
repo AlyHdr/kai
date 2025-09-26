@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:kai/screens/landing_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -16,7 +15,7 @@ void main() async {
 }
 
 Future<void> initPlatformState() async {
-  await Purchases.setLogLevel(LogLevel.debug);
+  await Purchases.setLogLevel(LogLevel.info);
 
   PurchasesConfiguration? configuration;
   // Inject keys via --dart-define to avoid committing them
@@ -37,9 +36,13 @@ Future<void> initPlatformState() async {
   } else {
     // Helpful diagnostics when keys are missing or not injected
     if (Platform.isAndroid && rcAndroidKey.isEmpty) {
-      print('[Purchases] Missing RC_ANDROID_SDK_KEY. Pass via --dart-define or env.json');
+      print(
+        '[Purchases] Missing RC_ANDROID_SDK_KEY. Pass via --dart-define or env.json',
+      );
     } else if (Platform.isIOS && rciOSKey.isEmpty) {
-      print('[Purchases] Missing RC_IOS_SDK_KEY. Pass via --dart-define or env.json');
+      print(
+        '[Purchases] Missing RC_IOS_SDK_KEY. Pass via --dart-define or env.json',
+      );
     } else {
       print('Unsupported platform for Purchases');
     }

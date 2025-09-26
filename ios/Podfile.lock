@@ -1194,11 +1194,11 @@ PODS:
   - BoringSSL-GRPC/Implementation (0.0.37):
     - BoringSSL-GRPC/Interface (= 0.0.37)
   - BoringSSL-GRPC/Interface (0.0.37)
-  - cloud_firestore (5.6.11):
+  - cloud_firestore (5.6.12):
     - Firebase/Firestore (= 11.15.0)
     - firebase_core
     - Flutter
-  - cloud_functions (5.6.1):
+  - cloud_functions (5.6.2):
     - Firebase/Functions (= 11.15.0)
     - firebase_core
     - Flutter
@@ -1213,11 +1213,11 @@ PODS:
   - Firebase/Functions (11.15.0):
     - Firebase/CoreOnly
     - FirebaseFunctions (~> 11.15.0)
-  - firebase_auth (5.6.2):
+  - firebase_auth (5.7.0):
     - Firebase/Auth (= 11.15.0)
     - firebase_core
     - Flutter
-  - firebase_core (3.15.1):
+  - firebase_core (3.15.2):
     - Firebase/CoreOnly (= 11.15.0)
     - Flutter
   - FirebaseAppCheckInterop (11.15.0)
@@ -1392,21 +1392,21 @@ PODS:
     - nanopb/encode (= 3.30910.0)
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
-  - purchases_flutter (9.5.0):
+  - purchases_flutter (9.6.2):
     - Flutter
-    - PurchasesHybridCommon (= 17.5.0)
-  - purchases_ui_flutter (9.5.0):
+    - PurchasesHybridCommon (= 17.7.0)
+  - purchases_ui_flutter (9.6.2):
     - Flutter
-    - PurchasesHybridCommonUI (= 17.5.0)
-  - PurchasesHybridCommon (17.5.0):
-    - RevenueCat (= 5.37.0)
-  - PurchasesHybridCommonUI (17.5.0):
-    - PurchasesHybridCommon (= 17.5.0)
-    - RevenueCatUI (= 5.37.0)
+    - PurchasesHybridCommonUI (= 17.7.0)
+  - PurchasesHybridCommon (17.7.0):
+    - RevenueCat (= 5.39.0)
+  - PurchasesHybridCommonUI (17.7.0):
+    - PurchasesHybridCommon (= 17.7.0)
+    - RevenueCatUI (= 5.39.0)
   - RecaptchaInterop (101.0.0)
-  - RevenueCat (5.37.0)
-  - RevenueCatUI (5.37.0):
-    - RevenueCat (= 5.37.0)
+  - RevenueCat (5.39.0)
+  - RevenueCatUI (5.39.0):
+    - RevenueCat (= 5.39.0)
   - url_launcher_ios (0.0.1):
     - Flutter
 
@@ -1472,11 +1472,11 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   abseil: a05cc83bf02079535e17169a73c5be5ba47f714b
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
-  cloud_firestore: 8b8ad857da9a98527dab9c7ae520d0eba975bef9
-  cloud_functions: 2deea2254d9a845af7e6bcfe37bd2cb9887600fe
+  cloud_firestore: fdcc87898326e396d6ef6df543acf9b5c2034b95
+  cloud_functions: 8565a870fbdc2b5046cba8183e972484128b6d8d
   Firebase: d99ac19b909cd2c548339c2241ecd0d1599ab02e
-  firebase_auth: dad1f2f9c317dba1b300933a3f7622fa30eb721c
-  firebase_core: ece862f94b2bc72ee0edbeec7ab5c7cb09fe1ab5
+  firebase_auth: 50af8366c87bb88c80ebeae62eb60189c7246b9b
+  firebase_core: 995454a784ff288be5689b796deb9e9fa3601818
   FirebaseAppCheckInterop: 06fe5a3799278ae4667e6c432edd86b1030fa3df
   FirebaseAuth: a6575e5fbf46b046c58dc211a28a5fbdd8d4c83b
   FirebaseAuthInterop: 7087d7a4ee4bc4de019b2d0c240974ed5d89e2fd
@@ -1488,7 +1488,7 @@ SPEC CHECKSUMS:
   FirebaseFunctions: 86062a3ba8c7420e6b6fe22c8a1e1150332286de
   FirebaseMessagingInterop: 63e504b147a7206cfe64cbe2f40c2ddd009945bd
   FirebaseSharedSwift: e17c654ef1f1a616b0b33054e663ad1035c8fd40
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_native_splash: c32d145d68aeda5502d5f543ee38c192065986cf
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   "gRPC-C++": cc207623316fb041a7a3e774c252cf68a058b9e8
@@ -1496,15 +1496,15 @@ SPEC CHECKSUMS:
   GTMSessionFetcher: fc75fc972958dceedee61cb662ae1da7a83a91cf
   leveldb-library: cc8b8f8e013647a295ad3f8cd2ddf49a6f19be19
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
-  purchases_flutter: 902f520ed0cba91d578f1bb65e9d34dbcc70fba8
-  purchases_ui_flutter: 82c788e4172096877f923d71fe6cc4c094b2f3a2
-  PurchasesHybridCommon: 7d56bf25c61e2c8a62e5b23d7bf16b5060420fe9
-  PurchasesHybridCommonUI: 71ff7a9d86a765ab5f941292868cf2ce832b3087
+  purchases_flutter: 6b62051d2bc7e2a977c7cd52c18a6281c4641361
+  purchases_ui_flutter: 3e139566b11b2358da8b1e8d618753613c54d527
+  PurchasesHybridCommon: 6bc96162fb0c061e1980f474be618c088cfd1428
+  PurchasesHybridCommonUI: 6026c0e1583deb09e9eac4250592562fbf966ec3
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
-  RevenueCat: fc4ad171bbfbfb974210f0b26ce470b007be111f
-  RevenueCatUI: cf8e3cc5ed9bef944138a991577a28c0c4454020
+  RevenueCat: 4743a5eee0004e1c03eabeb3498818f902a5d622
+  RevenueCatUI: d7ead994884d8eaa23efaf9a0e13a7757af2c3f7
   url_launcher_ios: 694010445543906933d732453a59da0a173ae33d
 
-PODFILE CHECKSUM: aa59000357243846c3d805b6023647305021ca83
+PODFILE CHECKSUM: 5ef52b4146218556e2a1725d8a6df533308f8498
 
 COCOAPODS: 1.16.2
