@@ -78,7 +78,7 @@ def generate_macros(req: https_fn.CallableRequest):
     )
 
     response = client.responses.parse(
-        model="gpt-5-mini",
+        model="gpt-4.1-mini",
         input=[        
             {"role": "system", "content": "You are an expert in nutrtion and fitness. Help the user with their daily macronutrient needs."},
             {"role": "user", "content": prompt}
@@ -109,7 +109,7 @@ def generate_meal_plan(req: https_fn.CallableRequest):
 
     try:
         response = client.responses.parse(   # 👈 use `.parse` here
-            model="gpt-5-mini",               
+            model="gpt-4.1-mini",               
             input=[
                 {
                     "role": "system",
