@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kai/services/users_service.dart';
+import 'package:kai/services/json_sanitizer.dart';
 
 class MealPlanScreen extends StatefulWidget {
   const MealPlanScreen({super.key});
@@ -210,9 +211,10 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
         FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
       }
 
-      final userData = await UsersService().getUserData();
+      final rawUserData = await UsersService().getUserData();
+      final userData = sanitizeForCallable(rawUserData) as Map<String, dynamic>;
       final payload = {
-        ...userData!,
+        ...userData,
         'preferences': prefs,
         'dateId': _dateId,
         if (force) 'forceRegenerate': true,
