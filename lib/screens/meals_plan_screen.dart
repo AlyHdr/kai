@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kai/services/users_service.dart';
 import 'package:kai/services/json_sanitizer.dart';
+import 'package:kai/services/subscription_service.dart';
 
 class MealPlanScreen extends StatefulWidget {
   const MealPlanScreen({super.key});
@@ -15,6 +16,7 @@ class MealPlanScreen extends StatefulWidget {
 class _MealPlanScreenState extends State<MealPlanScreen> {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
+  final _subscription = SubscriptionService.instance;
 
   late final String _uid;
   late final String _dateId; // yyyy-MM-dd
@@ -188,9 +190,74 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
     };
   }
 
-  Future<void> _startGeneration({bool force = false}) async {
+  Map<String, dynamic> _defaultPreferences() => {
+        'cuisine': 'any',
+        'proteins': {
+          'breakfast': 'any',
+          'lunch': 'any',
+          'dinner': 'any',
+        },
+      };
+
+  Future<void> _handleGenerate({bool force = false}) async {
     if (_generationTriggered) return;
-    final prefs = await _promptMealPreferences();
+
+    // Feature gate: only gate customization, not access
+    bool entitled = false;
+    try {
+      entitled = await _subscription.isEntitled();
+    } catch (_) {
+      entitled = false;
+    }
+
+    Map<String, dynamic>? prefs;
+
+    if (!entitled) {
+      final action = await showDialog<String>(
+        context: context,
+        barrierDismissible: true,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Customize Meal Plan'),
+          content: const Text(
+            'Subscribe to unlock full meal plan customization, or generate a plan using default preferences.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('defaults'),
+              child: const Text('Use defaults'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await _subscription.presentPaywallIfNeeded();
+                final nowEntitled = await _subscription.isEntitled();
+                if (!ctx.mounted) return;
+                Navigator.of(ctx).pop(nowEntitled ? 'subscribed' : 'cancel');
+              },
+              child: const Text('Subscribe'),
+            ),
+          ],
+        ),
+      );
+
+      if (action == 'defaults') {
+        prefs = _defaultPreferences();
+      } else if (action == 'subscribed') {
+        // proceed to full preferences
+        prefs = await _promptMealPreferences();
+      } else {
+        // cancel/dismiss
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Plan generation canceled')),
+          );
+        }
+        return;
+      }
+    } else {
+      // Entitled: show full preferences
+      prefs = await _promptMealPreferences();
+    }
+
     if (prefs == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -200,6 +267,13 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       return;
     }
 
+    await _startGenerationWithPrefs(prefs: prefs, force: force);
+  }
+
+  Future<void> _startGenerationWithPrefs({
+    required Map<String, dynamic> prefs,
+    bool force = false,
+  }) async {
     setState(() {
       _generationTriggered = true;
       _genError = null;
@@ -266,7 +340,7 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
             if (_generationTriggered) {
               return const _CenteredProgress('Generating your plan...');
             }
-            return _EmptyPlanCta(onGenerate: () => _startGeneration());
+            return _EmptyPlanCta(onGenerate: () => _handleGenerate());
           }
 
           final data = doc.data()!;
@@ -359,11 +433,11 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Optional: allow regenerating with new preferences
+                // Optional: allow regenerating with new preferences (gated)
                 OutlinedButton.icon(
                   onPressed: () async {
                     try {
-                      await _startGeneration(force: true);
+                      await _handleGenerate(force: true);
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(

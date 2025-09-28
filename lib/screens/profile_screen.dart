@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kai/models/onboarding_data.dart';
 import 'package:kai/services/macros_service.dart';
+import 'package:kai/services/subscription_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -156,6 +157,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .update(updatedUser);
 
     if (!_macrosChanged) {
+      // Gate macro regeneration behind subscription
+      bool entitled = false;
+      try {
+        entitled = await SubscriptionService.instance.isEntitled();
+      } catch (_) {
+        entitled = false;
+      }
+
+      if (!entitled) {
+        final action = await showDialog<String>(
+          context: context,
+          barrierDismissible: true,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Recalculate Macros'),
+            content: const Text(
+              'Subscribing unlocks automatic macro recalculation when you update your profile. '
+              'You can also save changes now and keep your existing macros.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop('save_only'),
+                child: const Text('Save only'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  await SubscriptionService.instance.presentPaywallIfNeeded();
+                  final nowEntitled = await SubscriptionService.instance
+                      .isEntitled();
+                  if (!ctx.mounted) return;
+                  Navigator.of(ctx).pop(nowEntitled ? 'subscribed' : 'cancel');
+                },
+                child: const Text('Subscribe'),
+              ),
+            ],
+          ),
+        );
+
+        if (action != 'subscribed') {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Saved. Using existing macros. Subscribe to recalc.',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
       try {
         setState(() => _regenerating = true);
         final data = OnboardingData()
