@@ -76,6 +76,10 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       .collection('intake')
       .doc(_dateId);
 
+  // Tracks daily usage (meal generation count) per user per day.
+  DocumentReference<Map<String, dynamic>> get _usageDoc =>
+      _firestore.collection('users').doc(_uid).collection('usage').doc(_dateId);
+
   /// Prompts the user for cuisine, protein preferences, and optional custom notes.
   /// Returns a map shaped like:
   /// {
@@ -191,16 +195,12 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
   }
 
   Map<String, dynamic> _defaultPreferences() => {
-        'cuisine': 'any',
-        'proteins': {
-          'breakfast': 'any',
-          'lunch': 'any',
-          'dinner': 'any',
-        },
-      };
+    'cuisine': 'any',
+    'proteins': {'breakfast': 'any', 'lunch': 'any', 'dinner': 'any'},
+  };
 
-  Future<void> _handleGenerate({bool force = false}) async {
-    if (_generationTriggered) return;
+  Future<bool> _handleGenerate({bool force = false}) async {
+    if (_generationTriggered) return false;
 
     // Feature gate: only gate customization, not access
     bool entitled = false;
@@ -251,7 +251,7 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
             const SnackBar(content: Text('Plan generation canceled')),
           );
         }
-        return;
+        return false;
       }
     } else {
       // Entitled: show full preferences
@@ -264,10 +264,162 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
           const SnackBar(content: Text('Plan generation canceled')),
         );
       }
-      return;
+      return false;
+    }
+
+    // Enforce daily usage limits before starting generation.
+    // Non‑subscribed: 1/day, Subscribed: 5/day.
+    bool nowEntitled = false;
+    try {
+      nowEntitled = await _subscription.isEntitled();
+    } catch (_) {
+      nowEntitled = false;
+    }
+
+    final allowed = await _consumeDailyGenerationSlot(entitled: nowEntitled);
+    if (!allowed) {
+      // If not subscribed, show dialog with Subscribe action to present paywall.
+      if (!nowEntitled) {
+        final action = await showDialog<String>(
+          context: context,
+          barrierDismissible: true,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Daily limit reached'),
+            content: const Text(
+              'You\'ve used your 1 free daily meal generation. Subscribe for 5 per day or try again tomorrow.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop('cancel'),
+                child: const Text('Not now'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  await _subscription.presentPaywallIfNeeded();
+                  bool afterEntitled = false;
+                  try {
+                    afterEntitled = await _subscription.isEntitled();
+                  } catch (_) {
+                    afterEntitled = false;
+                  }
+                  if (!ctx.mounted) return;
+                  Navigator.of(
+                    ctx,
+                  ).pop(afterEntitled ? 'subscribed' : 'cancel');
+                },
+                child: const Text('Subscribe'),
+              ),
+            ],
+          ),
+        );
+
+        if (action == 'subscribed') {
+          // Retry consume with subscriber limit (5/day)
+          final retryAllowed = await _consumeDailyGenerationSlot(
+            entitled: true,
+          );
+          if (retryAllowed) {
+            await _startGenerationWithPrefs(prefs: prefs, force: force);
+            return true;
+          } else {
+            if (!mounted) return false;
+            await showDialog<void>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Daily limit reached'),
+                content: const Text(
+                  'Daily limit reached (5 per day for subscribers). Try again tomorrow.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+            return false;
+          }
+        } else {
+          if (!mounted) return false;
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Daily limit reached'),
+              content: const Text(
+                'Daily limit reached (1 per day on free). Subscribe for 5/day or try again tomorrow.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          return false;
+        }
+      }
+
+      // Already subscribed and at limit: show informational dialog.
+      if (!mounted) return false;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Daily limit reached'),
+          content: const Text(
+            'Daily limit reached (5 per day for subscribers). Try again tomorrow.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return false;
     }
 
     await _startGenerationWithPrefs(prefs: prefs, force: force);
+    return true;
+  }
+
+  /// Attempts to consume one meal generation for the current day.
+  /// Returns true if within limit (and increments usage), false if limit reached.
+  Future<bool> _consumeDailyGenerationSlot({required bool entitled}) async {
+    final int limit = entitled ? 5 : 1;
+    try {
+      final allowed = await _firestore.runTransaction<bool>((tx) async {
+        final snap = await tx.get(_usageDoc);
+        final data = snap.data();
+        final used = (data != null
+            ? (data['mealGenerations'] as int? ?? 0)
+            : 0);
+        if (used >= limit) {
+          // Do not update; signal not allowed.
+          return false;
+        }
+        if (snap.exists) {
+          tx.update(_usageDoc, {
+            'mealGenerations': used + 1,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          tx.set(_usageDoc, {
+            'mealGenerations': 1,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'date': _dateId,
+          });
+        }
+        return true;
+      });
+      return allowed;
+    } catch (e) {
+      // On any error, fail open to avoid blocking legitimate generations due to transient issues.
+      // You may choose to fail closed instead depending on product needs.
+      return true;
+    }
   }
 
   Future<void> _startGenerationWithPrefs({
@@ -340,7 +492,11 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
             if (_generationTriggered) {
               return const _CenteredProgress('Generating your plan...');
             }
-            return _EmptyPlanCta(onGenerate: () => _handleGenerate());
+            return _EmptyPlanCta(
+              onGenerate: () {
+                _handleGenerate();
+              },
+            );
           }
 
           final data = doc.data()!;
@@ -437,8 +593,8 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                 OutlinedButton.icon(
                   onPressed: () async {
                     try {
-                      await _handleGenerate(force: true);
-                      if (mounted) {
+                      final started = await _handleGenerate(force: true);
+                      if (mounted && started) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Regeneration started…'),
