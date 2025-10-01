@@ -7,6 +7,7 @@ import 'package:kai/screens/main_screen.dart';
 import 'package:lottie/lottie.dart';
 import 'onboarding/onboarding_flow.dart';
 import 'package:kai/services/subscription_service.dart';
+// Social auth options are provided during onboarding/registration, not here.
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});

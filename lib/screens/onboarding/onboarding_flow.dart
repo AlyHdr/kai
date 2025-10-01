@@ -157,6 +157,33 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 rethrow;
               }
             },
+            onSocialRegister: (user) async {
+              try {
+                final uid = user.uid;
+                if (uid.isEmpty) throw Exception('User UID is null');
+
+                // If full name collected earlier, keep it; otherwise, use provider displayName.
+                data.fullName = data.fullName ?? user.displayName;
+
+                await _userService.createUser(uid, data);
+                await _macrosService.generateMacros(data, uid);
+
+                if (!mounted) return;
+                if (user.emailVerified) {
+                  // Return to root; LandingScreen will push MainScreen.
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VerifyEmailScreen(user: user),
+                    ),
+                  );
+                }
+              } catch (error) {
+                rethrow;
+              }
+            },
           ),
         ],
       ),

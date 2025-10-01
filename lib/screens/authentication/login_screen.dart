@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:kai/screens/landing_screen.dart';
 import 'package:kai/screens/authentication/verify_email_screen.dart';
 import 'package:kai/services/auth_service.dart';
+import 'package:kai/widgets/social_auth_buttons.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,9 +20,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? _error;
   bool _sendingReset = false;
+  bool _busy = false;
 
   void _login() async {
     try {
+      setState(() => _busy = true);
       var userCredentials = await _authService.signIn(
         _emailController.text.trim(),
         _passwordController.text.trim(),
@@ -42,6 +46,64 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       print('Login error: $e');
       setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    try {
+      setState(() => _busy = true);
+      final cred = await _authService.signInWithGoogle();
+      final user = cred.user;
+      if (user != null && !user.emailVerified) {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VerifyEmailScreen(user: user),
+          ),
+        );
+      } else {
+        if (mounted) Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Google sign-in failed: $e');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Google sign-in failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _loginWithApple() async {
+    try {
+      setState(() => _busy = true);
+      final cred = await _authService.signInWithApple();
+      final user = cred.user;
+      if (user != null && !user.emailVerified) {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VerifyEmailScreen(user: user),
+          ),
+        );
+      } else {
+        if (mounted) Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Apple sign-in failed: $e');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Apple sign-in failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -158,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _login,
+              onPressed: _busy ? null : _login,
               style: ElevatedButton.styleFrom(
                 minimumSize: Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
@@ -179,6 +241,54 @@ class _LoginScreenState extends State<LoginScreen> {
                     )
                   : const Text('Forgot password?'),
             ),
+            const SizedBox(height: 8),
+            // Divider with centered label
+            Row(
+              children: const [
+                Expanded(child: Divider()),
+                SizedBox(width: 8),
+                Text('Or Login with'),
+                SizedBox(width: 8),
+                Expanded(child: Divider()),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Icon-only social buttons on one row
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final showApple = Theme.of(context).platform == TargetPlatform.iOS ||
+                    Theme.of(context).platform == TargetPlatform.macOS;
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _IconOnlyButton(
+                      onPressed: _busy ? null : _loginWithGoogle,
+                      background: Colors.white,
+                      border: Colors.black12,
+                      icon: const FaIcon(
+                        FontAwesomeIcons.google,
+                        color: Color(0xFF4285F4),
+                      ),
+                      tooltip: 'Continue with Google',
+                    ),
+                    const SizedBox(width: 16),
+                    if (showApple)
+                      _IconOnlyButton(
+                        onPressed: _busy ? null : _loginWithApple,
+                        background: Colors.black,
+                        border: Colors.black,
+                        icon: const FaIcon(
+                          FontAwesomeIcons.apple,
+                          color: Colors.white,
+                        ),
+                        tooltip: 'Continue with Apple',
+                      ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            // Move register prompt to the bottom
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -196,6 +306,39 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _IconOnlyButton extends StatelessWidget {
+  const _IconOnlyButton({
+    required this.onPressed,
+    required this.icon,
+    required this.background,
+    required this.border,
+    required this.tooltip,
+  });
+
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final Color background;
+  final Color border;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: background,
+          side: BorderSide(color: border),
+          shape: const CircleBorder(),
+          padding: const EdgeInsets.all(14),
+        ),
+        child: icon,
       ),
     );
   }
