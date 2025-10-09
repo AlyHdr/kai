@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kai/screens/landing_screen.dart';
+import 'package:kai/screens/about_screen.dart';
 import 'package:kai/services/subscription_service.dart';
 import 'package:kai/services/auth_service.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -385,6 +386,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           ListView(
             children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'About',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                title: const Text('About Kai'),
+                trailing: const Icon(Icons.info_outline),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AboutScreen()),
+                  );
+                },
+              ),
+
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Text(

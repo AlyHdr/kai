@@ -433,9 +433,9 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
 
     try {
       // Use Functions emulator only in debug/profile builds
-      if (const bool.fromEnvironment('dart.vm.product') == false) {
-        FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
-      }
+      // if (const bool.fromEnvironment('dart.vm.product') == false) {
+      //   FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
+      // }
 
       final rawUserData = await UsersService().getUserData();
       final userData = sanitizeForCallable(rawUserData) as Map<String, dynamic>;
@@ -446,7 +446,7 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
         'progressive': true,
         if (force) 'forceRegenerate': true,
       };
-
+      print('Generating meal plan with payload: $payload');
       await FirebaseFunctions.instance
           .httpsCallable('generate_meal_plan')
           .call(payload);

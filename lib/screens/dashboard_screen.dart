@@ -178,25 +178,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     selectedDate: selectedDate,
                     onDateSelected: _onDaySelected,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
 
                   // Macros progress card
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(14.0),
                       // Macros progress card
                       child: Column(
                         children: [
                           const Text('Macros Progress'),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 10),
                           LayoutBuilder(
                             builder: (context, c) {
                               final screen = MediaQuery.sizeOf(context);
-                              final maxByWidth = c.maxWidth * 0.55;
-                              final maxByHeight = screen.height * 0.25;
+                              final maxByWidth = c.maxWidth * 0.50;
+                              final maxByHeight = screen.height * 0.22;
                               final ringSize = math
                                   .min(maxByWidth, maxByHeight)
-                                  .clamp(140.0, 220.0);
+                                  .clamp(100.0, 180.0);
                               return Center(
                                 child: SizedBox(
                                   width: ringSize,
@@ -210,7 +210,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               );
                             },
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           _MacroLegend(
                             totals: totals, // NEW
                             targets: macros, // NEW
@@ -220,7 +220,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
 
                   // Bottom area: two columns side-by-side
                   Expanded(
@@ -263,6 +263,7 @@ class _MacroLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textStyle = Theme.of(context).textTheme.bodySmall;
     final items = [
       (Colors.redAccent, "Fat", totals['fats'], targets['fats']),
       (Colors.blueAccent, "Protein", totals['proteins'], targets['proteins']),
@@ -278,10 +279,11 @@ class _MacroLegend extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 10, height: 10, color: color),
+            Container(width: 8, height: 8, color: color),
             const SizedBox(width: 6),
             Text(
               "$label: ${consumed.toStringAsFixed(0)} / ${target.toStringAsFixed(0)} g",
+              style: textStyle,
             ),
           ],
         );
@@ -306,43 +308,74 @@ class _CaloriesCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: LayoutBuilder(
-            builder: (context, c) {
-              final side = math.min(c.maxWidth, 220.0).clamp(140.0, 220.0);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    "Calories",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Target: ${targetKcal.toStringAsFixed(0)} kcal",
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+        child: LayoutBuilder(
+          builder: (context, c) {
+            // Measure text heights precisely to avoid overflow.
+            final defaultStyle = DefaultTextStyle.of(context).style;
+            final titleStyle = defaultStyle.copyWith(
+              fontWeight: FontWeight.bold,
+            );
+            final targetStyle =
+                Theme.of(context).textTheme.bodySmall ?? defaultStyle;
+            final scale = MediaQuery.textScaleFactorOf(context);
 
-                  Center(
-                    child: SizedBox(
-                      width: side,
-                      height: side,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // keep the visual % fill
-                          CalorieTankWidget(
-                            consumedKcal: consumedKcal,
-                            progress: progress['calories'],
-                          ),
-                        ],
-                      ),
+            double measureHeight(String text, TextStyle style) {
+              final painter = TextPainter(
+                text: TextSpan(text: text, style: style),
+                textDirection: TextDirection.ltr,
+                textScaleFactor: scale,
+                maxLines: 1,
+              )..layout(maxWidth: c.maxWidth);
+              return painter.height;
+            }
+
+            final titleH = measureHeight('Calories', titleStyle);
+            final targetH = measureHeight(
+              'Target: ${targetKcal.toStringAsFixed(0)} kcal',
+              targetStyle,
+            );
+            // Two SizedBox(height: 8) between lines and tank
+            final spacing = 16.0;
+            final reserved =
+                titleH + targetH + spacing + 4.0; // small safety margin
+
+            final maxH = c.maxHeight.isFinite ? c.maxHeight : 200.0;
+            var side = math.min(c.maxWidth, math.max(0.0, maxH - reserved));
+            // Cap maximum, avoid negative values
+            side = side.clamp(0.0, 220.0);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Calories",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Target: ${targetKcal.toStringAsFixed(0)} kcal",
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: SizedBox(
+                    width: side,
+                    height: side,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CalorieTankWidget(
+                          consumedKcal: consumedKcal,
+                          progress: progress['calories'],
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              );
-            },
-          ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

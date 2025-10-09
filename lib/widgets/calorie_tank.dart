@@ -12,21 +12,49 @@ class CalorieTankWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        CustomPaint(
-          size: const Size(70, 130),
-          painter: CalorieTankPainter(progress: progress),
-        ),
-        Positioned(
-          bottom: 8,
-          child: Text(
-            '${consumedKcal.toStringAsFixed(0)} kcal',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+    // Scale the tank to fit available space while preserving aspect ratio.
+    return LayoutBuilder(
+      builder: (context, c) {
+        const aspect = 130 / 70; // original painter aspect (h / w)
+        final maxW = c.maxWidth.isFinite ? c.maxWidth : 70.0;
+        final maxH = c.maxHeight.isFinite ? c.maxHeight : 130.0;
+
+        // Fit the tank inside the available box while keeping aspect.
+        double width = maxW;
+        double height = width * aspect;
+        if (height > maxH) {
+          height = maxH;
+          width = height / aspect;
+        }
+
+        return SizedBox(
+          width: maxW,
+          height: maxH,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: width,
+                height: height,
+                child: CustomPaint(
+                  size: Size(width, height),
+                  painter: CalorieTankPainter(progress: progress),
+                ),
+              ),
+              Positioned(
+                bottom: 8,
+                child: Text(
+                  '${consumedKcal.toStringAsFixed(0)} kcal',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
