@@ -3,12 +3,36 @@ import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final User? currentUser = FirebaseAuth.instance.currentUser;
+
+  final _googleSignIn = GoogleSignIn.instance;
+  bool _isGoogleSignInInitialized = false;
+
+  AuthService() {
+    _initializeGoogleSignIn();
+  }
+
+  Future<void> _initializeGoogleSignIn() async {
+    try {
+      await _googleSignIn.initialize();
+      _isGoogleSignInInitialized = true;
+    } catch (e) {
+      print('Failed to initialize Google Sign-In: $e');
+    }
+  }
+
+  Future<void> _ensureGoogleSignInInitialized() async {
+    if (!_isGoogleSignInInitialized) {
+      await _initializeGoogleSignIn();
+    }
+  }
+
   Future<UserCredential> signUp(String email, String password) async {
     return await _auth.createUserWithEmailAndPassword(
       email: email,
@@ -42,17 +66,30 @@ class AuthService {
 
   // ---- Social sign-in methods ----
   Future<UserCredential> signInWithGoogle() async {
-    final provider = GoogleAuthProvider();
-    provider.setCustomParameters({'prompt': 'select_account'});
-    provider.addScope('email');
-    provider.addScope('profile');
+    await _ensureGoogleSignInInitialized();
 
-    if (kIsWeb) {
-      return await _auth.signInWithPopup(provider);
-    }
+    // Authenticate with Google
+    final GoogleSignInAccount googleUser = await _googleSignIn.authenticate(
+      scopeHint: ['email'],
+    );
+    final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+    // Get authorization for Firebase scopes if needed
+    final authClient = _googleSignIn.authorizationClient;
+    final authorization = await authClient.authorizationForScopes(['email']);
 
-    // Use Firebase's signInWithProvider on mobile to avoid google_sign_in SDK issues.
-    return await _auth.signInWithProvider(provider);
+    final credential = GoogleAuthProvider.credential(
+      accessToken: authorization?.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(
+      credential,
+    );
+
+    // Update local state
+    // _currentUser = googleUser;
+
+    return userCredential;
   }
 
   Future<UserCredential> signInWithApple() async {

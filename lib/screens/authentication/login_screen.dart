@@ -256,7 +256,8 @@ class _LoginScreenState extends State<LoginScreen> {
             // Icon-only social buttons on one row
             LayoutBuilder(
               builder: (context, constraints) {
-                final showApple = Theme.of(context).platform == TargetPlatform.iOS ||
+                final showApple =
+                    Theme.of(context).platform == TargetPlatform.iOS ||
                     Theme.of(context).platform == TargetPlatform.macOS;
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.center,
