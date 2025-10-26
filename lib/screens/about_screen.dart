@@ -38,9 +38,18 @@ class AboutScreen extends StatelessWidget {
             'Kai does not provide medical or health advice. All content is for educational and informational purposes only. Always consult a qualified healthcare provider or registered dietitian before making changes to your diet or lifestyle.',
             style: TextStyle(fontSize: 16),
           ),
+          SizedBox(height: 16),
+          Text(
+            'Calculation Sources:',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'The AI model is prompted to use the Mifflin-St Jeor formula (Mifflin et al., 1990) for calorie target calculation . Activity multipliers from WHO/FAO/UNU (2001). Macronutrient ranges per USDA Dietary Guidelines (2020–2025).',
+            style: TextStyle(fontSize: 16),
+          ),
         ],
       ),
     );
   }
 }
-

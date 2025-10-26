@@ -568,6 +568,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: TextStyle(fontSize: 10),
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        tooltip: 'Sources for calculations',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.info_outline, size: 18),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Calculation Sources'),
+                              content: const Text(
+                                'The AI model is prompted to use the Mifflin-St Jeor formula (Mifflin et al., 1990) for calorie target calculation . Activity multipliers from WHO/FAO/UNU (2001). Macronutrient ranges per USDA Dietary Guidelines (2020–2025).',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(),
+                                  child: const Text('Close'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
