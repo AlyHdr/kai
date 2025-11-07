@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:kai/screens/landing_screen.dart';
 import 'package:kai/screens/authentication/verify_email_screen.dart';
 import 'package:kai/services/auth_service.dart';
+import 'package:kai/services/auth_flow_service.dart';
 import 'package:kai/widgets/social_auth_buttons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -29,20 +30,8 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-
-      final user = userCredentials.user;
-      if (user != null && !user.emailVerified) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VerifyEmailScreen(user: user),
-          ),
-        );
-      } else {
-        print('User logged in: ${user?.email}');
-        // Return to the LandingScreen; it will render MainScreen via auth stream.
-        if (mounted) Navigator.of(context).pop();
-      }
+      // Unify routing: verify email -> onboarding -> main
+      await AuthFlowService.handlePostSignInRouting(context);
     } catch (e) {
       print('Login error: $e');
       setState(() => _error = e.toString());
@@ -54,19 +43,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginWithGoogle() async {
     try {
       setState(() => _busy = true);
-      final cred = await _authService.signInWithGoogle();
-      final user = cred.user;
-      if (user != null && !user.emailVerified) {
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VerifyEmailScreen(user: user),
-          ),
-        );
-      } else {
-        if (mounted) Navigator.of(context).pop();
-      }
+      await _authService.signInWithGoogle();
+      if (!mounted) return;
+      await AuthFlowService.handlePostSignInRouting(context);
     } catch (e) {
       if (mounted) {
         setState(() => _error = 'Google sign-in failed: $e');
@@ -82,19 +61,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginWithApple() async {
     try {
       setState(() => _busy = true);
-      final cred = await _authService.signInWithApple();
-      final user = cred.user;
-      if (user != null && !user.emailVerified) {
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VerifyEmailScreen(user: user),
-          ),
-        );
-      } else {
-        if (mounted) Navigator.of(context).pop();
-      }
+      await _authService.signInWithApple();
+      if (!mounted) return;
+      await AuthFlowService.handlePostSignInRouting(context);
     } catch (e) {
       if (mounted) {
         setState(() => _error = 'Apple sign-in failed: $e');
@@ -193,8 +162,13 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/images/logo-transparent.png', height: 50),
-            SizedBox(height: 32),
+            Image.asset('assets/images/logo-only.png', height: 100),
+            const SizedBox(height: 16),
+            const Text(
+              'Welcome back',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _emailController,
               decoration: InputDecoration(
@@ -218,7 +192,21 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               obscureText: true,
             ),
-            SizedBox(height: 24),
+            // const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _sendingReset ? null : _promptPasswordReset,
+                child: _sendingReset
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Forgot password?'),
+              ),
+            ),
+            // const SizedBox(height: 8),
             ElevatedButton(
               onPressed: _busy ? null : _login,
               style: ElevatedButton.styleFrom(
@@ -229,67 +217,74 @@ class _LoginScreenState extends State<LoginScreen> {
                 backgroundColor: Colors.greenAccent,
                 textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              child: Text('Login'),
+              child: Text('Sign in'),
             ),
-            TextButton(
-              onPressed: _sendingReset ? null : _promptPasswordReset,
-              child: _sendingReset
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Forgot password?'),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             // Divider with centered label
             Row(
               children: const [
                 Expanded(child: Divider()),
                 SizedBox(width: 8),
-                Text('Or Login with'),
+                Text('or'),
                 SizedBox(width: 8),
                 Expanded(child: Divider()),
               ],
             ),
             const SizedBox(height: 12),
-            // Icon-only social buttons on one row
+            // Social sign-in buttons stacked vertically
             LayoutBuilder(
               builder: (context, constraints) {
                 final showApple =
                     Theme.of(context).platform == TargetPlatform.iOS ||
                     Theme.of(context).platform == TargetPlatform.macOS;
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _IconOnlyButton(
+                    OutlinedButton.icon(
                       onPressed: _busy ? null : _loginWithGoogle,
-                      background: Colors.white,
-                      border: Colors.black12,
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black87,
+                        side: const BorderSide(color: Colors.black12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        minimumSize: const Size(double.infinity, 50),
+                        textStyle: const TextStyle(fontSize: 16),
+                      ),
                       icon: const FaIcon(
                         FontAwesomeIcons.google,
                         color: Color(0xFF4285F4),
                       ),
-                      tooltip: 'Continue with Google',
+                      label: const Text('Sign in with Google'),
                     ),
-                    const SizedBox(width: 16),
+                    if (showApple) const SizedBox(height: 12),
                     if (showApple)
-                      _IconOnlyButton(
+                      OutlinedButton.icon(
                         onPressed: _busy ? null : _loginWithApple,
-                        background: Colors.black,
-                        border: Colors.black,
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black87,
+                          side: const BorderSide(color: Colors.black12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          minimumSize: const Size(double.infinity, 50),
+                          textStyle: const TextStyle(fontSize: 16),
+                        ),
                         icon: const FaIcon(
                           FontAwesomeIcons.apple,
-                          color: Colors.white,
+                          color: Colors.black,
                         ),
-                        tooltip: 'Continue with Apple',
+                        label: const Text('Sign in with Apple'),
                       ),
                   ],
                 );
               },
             ),
             const SizedBox(height: 16),
-            // Move register prompt to the bottom
+            const Spacer(),
+            // Register prompt pinned to bottom
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -312,35 +307,4 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class _IconOnlyButton extends StatelessWidget {
-  const _IconOnlyButton({
-    required this.onPressed,
-    required this.icon,
-    required this.background,
-    required this.border,
-    required this.tooltip,
-  });
-
-  final VoidCallback? onPressed;
-  final Widget icon;
-  final Color background;
-  final Color border;
-  final String tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: background,
-          side: BorderSide(color: border),
-          shape: const CircleBorder(),
-          padding: const EdgeInsets.all(14),
-        ),
-        child: icon,
-      ),
-    );
-  }
-}
+// Removed legacy _IconOnlyButton in favor of labeled OutlinedButtons

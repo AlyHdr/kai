@@ -10,6 +10,21 @@ class UsersService {
   UsersService._internal();
   final _usersCollection = FirebaseFirestore.instance.collection('users');
 
+  Future<bool> userExists(String uid) async {
+    try {
+      final doc = await _usersCollection.doc(uid).get();
+      return doc.exists;
+    } catch (e) {
+      throw Exception('Failed checking user existence: $e');
+    }
+  }
+
+  Future<bool> currentUserExists() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+    return userExists(uid);
+  }
+
   Future<void> createUser(String uid, OnboardingData data) async {
     try {
       await _usersCollection.doc(uid).set(data.toMap());

@@ -1,12 +1,11 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kai/screens/authentication/login_screen.dart';
 import 'package:kai/screens/authentication/verify_email_screen.dart';
 import 'package:kai/screens/main_screen.dart';
-import 'package:lottie/lottie.dart';
 import 'onboarding/onboarding_flow.dart';
 import 'package:kai/services/subscription_service.dart';
+import 'package:kai/services/users_service.dart';
 // Social auth options are provided during onboarding/registration, not here.
 
 class LandingScreen extends StatelessWidget {
@@ -31,7 +30,22 @@ class LandingScreen extends StatelessWidget {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               SubscriptionService.instance.logIn(uid);
             });
-            return const MainScreen();
+            // Check onboarding completion before showing main
+            return FutureBuilder<bool>(
+              future: UsersService().userExists(uid),
+              builder: (context, existsSnap) {
+                if (existsSnap.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                final exists = existsSnap.data == true;
+                if (!exists) {
+                  return const OnboardingFlow();
+                }
+                return const MainScreen();
+              },
+            );
           } else {
             // Keep RevenueCat logged out for unverified accounts
             WidgetsBinding.instance.addPostFrameCallback((_) {

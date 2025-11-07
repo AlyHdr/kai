@@ -1,11 +1,11 @@
 // lib/screens/onboarding/onboarding_flow.dart
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:kai/screens/authentication/verify_email_screen.dart';
 import 'package:kai/screens/onboarding/steps/thanking_step.dart';
 import 'package:kai/services/auth_service.dart';
 import 'package:kai/services/macros_service.dart';
 import 'package:kai/services/users_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/onboarding_data.dart';
 import 'steps/activity_step.dart';
 import 'steps/diet_step.dart';
@@ -14,6 +14,7 @@ import 'steps/height_weight_step.dart';
 import 'steps/dob_step.dart';
 import 'steps/goal_step.dart';
 import 'steps/registration_step.dart';
+import 'package:kai/screens/main_screen.dart';
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({super.key});
@@ -29,6 +30,37 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   final AuthService _authService = AuthService();
   final UsersService _userService = UsersService();
   final MacrosService _macrosService = MacrosService();
+  bool _checkingExisting = true;
+  bool _finalizing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkExistingUserAndMaybeSkip();
+  }
+
+  Future<void> _checkExistingUserAndMaybeSkip() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final exists = await _userService.userExists(user.uid);
+        if (exists) {
+          if (!mounted) return;
+          // User already onboarded; go to main and clear stack.
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+            (route) => false,
+          );
+          return;
+        }
+      }
+    } catch (_) {
+      // Ignore and continue onboarding if we cannot determine.
+    } finally {
+      if (mounted) setState(() => _checkingExisting = false);
+    }
+  }
+
   void _nextStep() {
     if (_currentStep < 7) {
       _controller.nextPage(
@@ -43,6 +75,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingExisting || _finalizing) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(
@@ -118,8 +153,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             },
           ),
           ThankingStep(
-            onNext: () {
-              _nextStep();
+            onNext: () async {
+              // If user already authenticated (e.g., via social), finalize now and skip registration.
+              final user = FirebaseAuth.instance.currentUser;
+              if (user != null) {
+                await _finalizeOnboardingForUser(user);
+              } else {
+                _nextStep();
+              }
             },
           ),
           RegistrationStep(
@@ -129,29 +170,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   email,
                   password,
                 );
-                final uid = userCredentials.user?.uid;
-
-                if (uid != null) {
-                  setState(() {
-                    data.fullName = fullName;
-                  });
-
-                  await _userService.createUser(uid, data);
-                  await userCredentials.user?.sendEmailVerification();
-                  await _macrosService.generateMacros(data, uid);
-
-                  // Navigate to email verification screen once all succeeded
-                  if (!mounted) return;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          VerifyEmailScreen(user: userCredentials.user!),
-                    ),
-                  );
-                } else {
-                  throw Exception('User UID is null');
-                }
+                final user = userCredentials.user;
+                if (user == null) throw Exception('User UID is null');
+                // Centralized finalize for email/password; send verification email.
+                await _finalizeOnboardingForUser(
+                  user,
+                  fullName: fullName,
+                  sendVerificationIfNeeded: true,
+                  showErrors: false,
+                  rethrowErrors: true,
+                );
               } catch (error) {
                 // Allow RegistrationStep to surface the error to the user
                 rethrow;
@@ -159,27 +187,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             },
             onSocialRegister: (user) async {
               try {
-                final uid = user.uid;
-                if (uid.isEmpty) throw Exception('User UID is null');
-
-                // If full name collected earlier, keep it; otherwise, use provider displayName.
-                data.fullName = data.fullName ?? user.displayName;
-
-                await _userService.createUser(uid, data);
-                await _macrosService.generateMacros(data, uid);
-
-                if (!mounted) return;
-                if (user.emailVerified) {
-                  // Return to root; LandingScreen will push MainScreen.
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                } else {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => VerifyEmailScreen(user: user),
-                    ),
-                  );
-                }
+                await _finalizeOnboardingForUser(
+                  user,
+                  showErrors: false,
+                  rethrowErrors: true,
+                );
               } catch (error) {
                 rethrow;
               }
@@ -188,5 +200,56 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         ],
       ),
     );
+  }
+
+  Future<void> _finalizeOnboardingForUser(
+    User user, {
+    String? fullName,
+    bool sendVerificationIfNeeded = false,
+    bool showErrors = true,
+    bool rethrowErrors = false,
+  }) async {
+    try {
+      setState(() => _finalizing = true);
+      final uid = user.uid;
+      if (uid.isEmpty) throw Exception('User UID is null');
+
+      // Resolve full name precedence: explicit > collected > provider displayName
+      final resolvedName = (fullName != null && fullName.trim().isNotEmpty)
+          ? fullName.trim()
+          : (data.fullName ?? user.displayName);
+      data.fullName = resolvedName;
+
+      await _userService.createUser(uid, data);
+      await _macrosService.generateMacros(data, uid);
+
+      if (!mounted) return;
+      if (user.emailVerified) {
+        // Go straight to main; clear stack so back does not return to onboarding.
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+          (route) => false,
+        );
+      } else {
+        if (sendVerificationIfNeeded) {
+          await user.sendEmailVerification();
+        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VerifyEmailScreen(user: user),
+          ),
+        );
+      }
+    } catch (e) {
+      if (showErrors && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to finish onboarding: $e')),
+        );
+      }
+      if (rethrowErrors) rethrow;
+    } finally {
+      if (mounted) setState(() => _finalizing = false);
+    }
   }
 }

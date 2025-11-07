@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:kai/models/onboarding_data.dart';
 import 'package:kai/services/users_service.dart';
 import 'package:kai/services/macros_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -22,6 +21,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late Future<Map<String, dynamic>?> dashboardData;
   bool _mealPromptShownForDate = false;
   bool _macrosPromptShown = false;
+  bool _retryScheduled = false;
+  bool _firstNoDataObserved = false;
 
   @override
   void initState() {
@@ -79,6 +80,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _maybePromptGenerateMacros() {
     if (_macrosPromptShown) return;
+
+    // First time we detect missing macros, schedule a quick re-fetch instead of prompting.
+    if (!_firstNoDataObserved) {
+      _firstNoDataObserved = true;
+      if (!_retryScheduled) {
+        _retryScheduled = true;
+        Future.delayed(const Duration(seconds: 2), () {
+          if (!mounted) return;
+          setState(() {
+            dashboardData = UsersService().getDashboardData(selectedDate);
+            _retryScheduled = false;
+          });
+        });
+      }
+      return;
+    }
+
     _macrosPromptShown = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;

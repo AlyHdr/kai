@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:kai/screens/dashboard_screen.dart';
 import 'package:kai/screens/meals_plan_screen.dart';
 import 'package:kai/screens/profile_screen.dart';
-import 'package:kai/services/auth_service.dart';
 import 'package:kai/screens/settings_screen.dart';
 // Subscription gating removed from main screen; features will gate themselves.
-
-import 'landing_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key, this.initialIndex = 0});
@@ -19,8 +16,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  final AuthService _authService = AuthService();
-  
 
   final List<Widget> _screens = [
     const DashboardScreen(),
