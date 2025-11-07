@@ -4,7 +4,7 @@
 <dict>
 <key>GIDClientID</key>
 <!-- Copied from GoogleService-Info.plist key CLIENT_ID -->
-<string>505199639473-ea6rss9gb27aj1vkdm3hrtcna9vuklka.apps.googleusercontent.com</string>
+<string>505199639473-mf3en8gimj5mmv8lksvj877j5rbdrcc0.apps.googleusercontent.com</string>
 <!-- Google Sign-in Section -->
 <key>CFBundleURLTypes</key>
 <array>
@@ -14,7 +14,7 @@
 		<key>CFBundleURLSchemes</key>
 		<array>
 			<!-- Copied from GoogleService-Info.plist key REVERSED_CLIENT_ID -->
-			<string>com.googleusercontent.apps.505199639473-ea6rss9gb27aj1vkdm3hrtcna9vuklka</string>
+			<string>com.googleusercontent.apps.505199639473-mf3en8gimj5mmv8lksvj877j5rbdrcc0</string>
 		</array>
 	</dict>
 </array>

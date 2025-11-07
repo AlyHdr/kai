@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBMFtNe3UVNiSejeSOxMgXxV3tbW2j5KeM',
-    appId: '1:505199639473:android:12df27e10d9f67234d9b90',
+    appId: '1:505199639473:android:793533c043ae27144d9b90',
     messagingSenderId: '505199639473',
     projectId: 'kai-nutrition-assistant',
     storageBucket: 'kai-nutrition-assistant.firebasestorage.app',
@@ -59,11 +59,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAqSwAADEjUR_z8MC6mxsdm8lrl8FiBQt8',
-    appId: '1:505199639473:ios:bb65e856862a68324d9b90',
+    appId: '1:505199639473:ios:c682eab9ce7dc1114d9b90',
     messagingSenderId: '505199639473',
     projectId: 'kai-nutrition-assistant',
     storageBucket: 'kai-nutrition-assistant.firebasestorage.app',
-    iosBundleId: 'com.example.kai',
+    iosClientId: '505199639473-mf3en8gimj5mmv8lksvj877j5rbdrcc0.apps.googleusercontent.com',
+    iosBundleId: 'com.alainalihaidar.kai',
   );
 
 }
