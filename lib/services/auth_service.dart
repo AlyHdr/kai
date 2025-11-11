@@ -81,12 +81,7 @@ class AuthService {
       idToken: googleAuth.idToken,
     );
 
-    final userCredential = await FirebaseAuth.instance.signInWithCredential(
-      credential,
-    );
-
-    // Update local state
-    // _currentUser = googleUser;
+    final userCredential = await _auth.signInWithCredential(credential);
 
     return userCredential;
   }

@@ -33,7 +33,11 @@ class _LoginScreenState extends State<LoginScreen> {
       // Unify routing: verify email -> onboarding -> main
       await AuthFlowService.handlePostSignInRouting(context);
     } catch (e) {
-      print('Login error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+      }
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -306,5 +310,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
-// Removed legacy _IconOnlyButton in favor of labeled OutlinedButtons

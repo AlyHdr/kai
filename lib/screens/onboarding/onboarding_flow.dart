@@ -80,18 +80,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(
-          onPressed: () {
-            if (_currentStep > 0) {
-              _controller.previousPage(
-                duration: Duration(milliseconds: 300),
-                curve: Curves.ease,
-              );
-            } else {
-              Navigator.pop(context);
-            }
-          },
-        ),
+        leading: BackButton(onPressed: _onBackPressed),
         title: LinearProgressIndicator(
           value: (_currentStep + 1) / 8, // Adjust based on number of steps
           backgroundColor: Colors.grey.shade300,
@@ -200,6 +189,49 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         ],
       ),
     );
+  }
+
+  Future<void> _onBackPressed() async {
+    if (_currentStep > 0) {
+      _controller.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.ease,
+      );
+      return;
+    }
+    // At first step: if user is authenticated (social sign-in path), sign out
+    // so LandingScreen rebuilds to the logged-out landing UI, no pop needed.
+    if (FirebaseAuth.instance.currentUser != null) {
+      final confirm = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Leave onboarding?'),
+              content: const Text(
+                'You are signed in. Going back will sign you out and return to the start.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Sign out'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (confirm) {
+        try {
+          await _authService.signOut();
+        } catch (_) {}
+      }
+      return;
+    }
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _finalizeOnboardingForUser(
