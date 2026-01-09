@@ -35,28 +35,19 @@ def get_vector_store() -> PineconeVectorStore:
 
 
 def build_retrieval_query(data: dict, slot: str, slot_target: dict | None = None) -> str:
-    """Create a text query for vector search using user preferences and slot info."""
+    """Create a text query for vector search using textual prefs (omit numeric macros)."""
     prefs = data.get('preferences') or {}
     proteins = prefs.get('proteins') or {}
     parts = [
+        # slot,  # keep slot as a semantic hint
         data.get('dietPreference'),
         prefs.get('cuisine'),
         prefs.get('custom'),
-        f"{slot} protein {proteins.get(slot) or ''}",
+        # proteins.get(slot),
     ]
-    macros = data.get('macros') or {}
-    if macros:
-        parts.append(
-            f"calories {macros.get('calories')} protein {macros.get('proteins', macros.get('protein'))} "
-            f"carbs {macros.get('carbs')} fats {macros.get('fats')}"
-        )
-    if slot_target:
-        parts.append(
-            f"{slot} target {slot_target.get('calories')} kcal "
-            f"{slot_target.get('protein')}g protein"
-        )
+    # Keep only textual hints to improve semantic retrieval
     query = " ".join(str(p) for p in parts if p)
-    return query or f"{slot} balanced recipe"
+    return query or f"{slot} recipe"
 
 
 def format_docs_for_prompt(docs, max_docs: int = 5, max_chars: int = 750) -> str:

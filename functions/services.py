@@ -24,6 +24,7 @@ def get_user_recent_meals(db, user_id: str, days_back: int = 7, max_meals: int =
             try:
                 plan_doc_ref = db.collection('users').document(user_id).collection('plans').document(date_id)
                 plan_doc = plan_doc_ref.get()
+                print(f"Fetched plan for date {date_id}: {plan_doc.to_dict() if plan_doc.exists else 'No plan found'}")
                 if plan_doc.exists:
                     plan_data = plan_doc.to_dict()
 
