@@ -388,7 +388,7 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
   /// Attempts to consume one meal generation for the current day.
   /// Returns true if within limit (and increments usage), false if limit reached.
   Future<bool> _consumeDailyGenerationSlot({required bool entitled}) async {
-    final int limit = entitled ? 5 : 1;
+    final int limit = entitled ? 100 : 1;
     try {
       final allowed = await _firestore.runTransaction<bool>((tx) async {
         final snap = await tx.get(_usageDoc);
@@ -433,9 +433,9 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
 
     try {
       // Use Functions emulator only in debug/profile builds
-      // if (const bool.fromEnvironment('dart.vm.product') == false) {
-      //   FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
-      // }
+      if (const bool.fromEnvironment('dart.vm.product') == false) {
+        FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
+      }
 
       final rawUserData = await UsersService().getUserData();
       final userData = sanitizeForCallable(rawUserData) as Map<String, dynamic>;
@@ -448,14 +448,14 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       };
       print('Generating meal plan with payload: $payload');
       await FirebaseFunctions.instance
-          .httpsCallable('generate_meal_plan')
+          .httpsCallable('generate_meal_plan_rag')
           .call(payload);
       if (mounted) setState(() => _genError = null);
     } catch (e) {
       if (mounted) {
         print('Error generating plan: $e');
         setState(() {
-          _genError = 'Failed to generate plan: $e';
+          _genError = 'Failed to generate plan, please try again.';
         });
       }
     } finally {

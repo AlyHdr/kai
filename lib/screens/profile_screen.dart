@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kai/models/onboarding_data.dart';
 import 'package:kai/services/macros_service.dart';
 import 'package:kai/services/subscription_service.dart';
+import 'package:kai/screens/settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -458,6 +459,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   "Profile",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
+              ),
+              ListTile(
+                title: const Text("Settings"),
+                leading: const Icon(Icons.settings),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  );
+                },
               ),
               ListTile(
                 title: const Text("Date of Birth"),
