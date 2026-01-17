@@ -1,0 +1,43 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "kai-nutrition-assistant",
+          "appId": "1:505199639473:android:793533c043ae27144d9b90",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "kai-nutrition-assistant",
+          "appId": "1:505199639473:ios:c682eab9ce7dc1114d9b90",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "kai-nutrition-assistant",
+          "configurations": {
+            "android": "1:505199639473:android:793533c043ae27144d9b90",
+            "ios": "1:505199639473:ios:c682eab9ce7dc1114d9b90"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "venv",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

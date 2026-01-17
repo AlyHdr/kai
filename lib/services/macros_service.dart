@@ -1,0 +1,54 @@
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:kai/models/onboarding_data.dart';
+import 'package:kai/services/users_service.dart';
+import 'package:kai/services/json_sanitizer.dart';
+
+class MacrosService {
+  Future<void> generateMacros(OnboardingData data, String uid) async {
+    // if (const bool.fromEnvironment('dart.vm.product') == false) {
+    //   FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
+    // }
+    final clean = sanitizeForCallable(data.toMap()) as Map<String, dynamic>;
+    final result = await FirebaseFunctions.instance
+        .httpsCallable('generate_macros')
+        .call(clean);
+
+    final macrosData = result.data;
+    print("Macros: $macrosData");
+    if (macrosData is Map<String, dynamic>) {
+      // Normalize key naming: ensure 'proteins' exists for targets
+      if (!macrosData.containsKey('proteins') &&
+          macrosData.containsKey('protein')) {
+        macrosData['proteins'] = macrosData['protein'];
+      }
+      // Save the generated macros to the user's document
+      await UsersService().updateMacros(uid, macrosData);
+    } else {
+      throw Exception('Invalid macros data received');
+    }
+  }
+
+  /// Generate macros directly from a saved user document map.
+  /// Expects keys like: dateOfBirth (ISO string), weightKg, heightCm, gender,
+  /// activityLevel, goal, dietPreference.
+  Future<void> generateMacrosFromUserData(
+    Map<String, dynamic> userData,
+    String uid,
+  ) async {
+    final clean = sanitizeForCallable(userData) as Map<String, dynamic>;
+    final result = await FirebaseFunctions.instance
+        .httpsCallable('generate_macros')
+        .call(clean);
+
+    final macrosData = result.data;
+    if (macrosData is Map<String, dynamic>) {
+      if (!macrosData.containsKey('proteins') &&
+          macrosData.containsKey('protein')) {
+        macrosData['proteins'] = macrosData['protein'];
+      }
+      await UsersService().updateMacros(uid, macrosData);
+    } else {
+      throw Exception('Invalid macros data received');
+    }
+  }
+}

@@ -1,0 +1,4 @@
+firebase_functions
+firebase_admin
+python-dotenv
+openai==1.93.0
