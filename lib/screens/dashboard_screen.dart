@@ -23,6 +23,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _macrosPromptShown = false;
   bool _retryScheduled = false;
   bool _firstNoDataObserved = false;
+  bool _weeklyPlanPromptShown = false;
 
   @override
   void initState() {
@@ -38,44 +39,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  void _maybePromptForMeals(Map<String, dynamic> mealsMap) {
-    // Show a one-time prompt per selected day if there are no meals
-    final hasAnyMeals = mealsMap.values.whereType<Map<String, dynamic>>().any(
-      (m) => (m['name'] ?? '').toString().isNotEmpty,
-    );
-    if (!hasAnyMeals && !_mealPromptShownForDate) {
-      _mealPromptShownForDate = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('No meals selected'),
-            content: const Text(
-              "You haven't selected your meals for today. Go to the Meal Planner to choose them now?",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Not now'),
-              ),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.restaurant_menu),
-                label: const Text('Go to Planner'),
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => const MainScreen(initialIndex: 1),
-                    ),
-                  );
-                },
-              ),
-            ],
+  void _maybePromptForWeeklyPlan() {
+    if (_weeklyPlanPromptShown) return;
+    _weeklyPlanPromptShown = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final hasPlan = await UsersService().hasWeeklyPlanForWeek(selectedDate);
+      if (!mounted || hasPlan) return;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Plan your week'),
+          content: const Text(
+            "You haven't picked your meals for this week yet. Go to the Planner to build your week now?",
           ),
-        );
-      });
-    }
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Not now'),
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.restaurant_menu),
+              label: const Text('Go to Planner'),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => const MainScreen(initialIndex: 1),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   void _maybePromptGenerateMacros() {
@@ -182,7 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final data = snapshot.data!;
         final progress = data['progress'];
         final mealsMap = data['meals'] as Map<String, dynamic>;
-        _maybePromptForMeals(mealsMap);
+        _maybePromptForWeeklyPlan();
         final macros = data['macros'] as Map<String, dynamic>; // daily targets
         final totals = data['totals'] as Map<String, dynamic>; // consumed today
 
@@ -326,74 +326,38 @@ class _CaloriesCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: LayoutBuilder(
-          builder: (context, c) {
-            // Measure text heights precisely to avoid overflow.
-            final defaultStyle = DefaultTextStyle.of(context).style;
-            final titleStyle = defaultStyle.copyWith(
-              fontWeight: FontWeight.bold,
-            );
-            final targetStyle =
-                Theme.of(context).textTheme.bodySmall ?? defaultStyle;
-            final scale = MediaQuery.textScaleFactorOf(context);
-
-            double measureHeight(String text, TextStyle style) {
-              final painter = TextPainter(
-                text: TextSpan(text: text, style: style),
-                textDirection: TextDirection.ltr,
-                textScaleFactor: scale,
-                maxLines: 1,
-              )..layout(maxWidth: c.maxWidth);
-              return painter.height;
-            }
-
-            final titleH = measureHeight('Calories', titleStyle);
-            final targetH = measureHeight(
-              'Target: ${targetKcal.toStringAsFixed(0)} kcal',
-              targetStyle,
-            );
-            // Two SizedBox(height: 8) between lines and tank
-            final spacing = 16.0;
-            final reserved =
-                titleH + targetH + spacing + 4.0; // small safety margin
-
-            final maxH = c.maxHeight.isFinite ? c.maxHeight : 200.0;
-            var side = math.min(c.maxWidth, math.max(0.0, maxH - reserved));
-            // Cap maximum, avoid negative values
-            side = side.clamp(0.0, 220.0);
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  "Calories",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Target: ${targetKcal.toStringAsFixed(0)} kcal",
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: SizedBox(
-                    width: side,
-                    height: side,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CalorieTankWidget(
-                          consumedKcal: consumedKcal,
-                          progress: progress['calories'],
-                        ),
-                      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            const Text(
+              "Calories",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Target: ${targetKcal.toStringAsFixed(0)} kcal",
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, c) {
+                  final side = math.min(c.maxWidth, c.maxHeight);
+                  return Center(
+                    child: SizedBox(
+                      width: side,
+                      height: side,
+                      child: CalorieTankWidget(
+                        consumedKcal: consumedKcal,
+                        progress: progress['calories'],
+                      ),
                     ),
-                  ),
-                ),
-              ],
-            );
-          },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -420,7 +384,7 @@ class _MealsCard extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                "Meals you pick in the planner will appear here.",
+                "Planned meals for this day will appear here.",
                 textAlign: TextAlign.center,
               ),
             ],
@@ -435,7 +399,7 @@ class _MealsCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Today's Meals",
+              "Planned meals",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:kai/screens/dashboard_screen.dart';
 import 'package:kai/screens/meals_plan_screen.dart';
 import 'package:kai/screens/profile_screen.dart';
-import 'package:kai/screens/recipes_screen.dart';
 import 'package:kai/screens/settings_screen.dart';
 // Subscription gating removed from main screen; features will gate themselves.
 
@@ -19,7 +18,6 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    const RecipesScreen(),
     const DashboardScreen(),
     const MealPlanScreen(),
     const ProfileScreen(),
@@ -46,10 +44,6 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.auto_awesome_mosaic),
-            label: 'Recipes',
-          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',

@@ -48,7 +48,8 @@ class RecipeDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '${recipe.calories} kcal · ${recipe.protein}g protein',
+                      '${recipe.calories} kcal · ${recipe.protein}g protein · '
+                      '${recipe.carbs}g carbs · ${recipe.fats}g fats',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,

@@ -131,3 +131,31 @@ Each option must include:
 Ensure portions and macros align with daily targets proportionally for this meal.
 """
     return prompt
+
+
+def create_grocery_list_prompt(meals: list[dict]):
+    """Prompt to generate a consolidated grocery list from selected meals."""
+    lines = []
+    for meal in meals:
+        name = meal.get('name', 'Unknown meal')
+        slot = meal.get('slot', 'meal')
+        day = meal.get('day', 'day')
+        lines.append(f"- {day} {slot}: {name}")
+
+    meals_text = "\n".join(lines) if lines else "- No meals provided"
+    return f"""You are a helpful meal prep assistant.
+Create a consolidated grocery list for one week based on the selected meals below.
+Deduplicate ingredients, combine quantities when possible, and group items by category.
+If quantities are unknown, provide reasonable estimates or "as needed".
+
+Selected meals:
+{meals_text}
+
+Return JSON that matches the expected schema.
+Each grocery item must include:
+- name (ingredient name)
+- quantity (free text, e.g., "2", "1 lb", "1 bunch", "as needed")
+- category (e.g., Produce, Protein, Dairy, Pantry, Spices, Frozen, Bakery)
+
+If a note helps (e.g., "check pantry for staples"), add it to notes.
+"""

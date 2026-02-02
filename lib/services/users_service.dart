@@ -71,30 +71,41 @@ class UsersService {
     final macros = userData?['macros'];
     if (macros == null) return null;
 
-    // Format today's date as YYYY-MM-DD
-    final dateKey =
-        "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+    DateTime weekStart(DateTime date) {
+      final normalized = DateTime(date.year, date.month, date.day);
+      return normalized.subtract(Duration(days: normalized.weekday - 1));
+    }
 
-    // Fetch today's intake
-    final intakeDoc = await _usersCollection
+    String dateId(DateTime date) {
+      final year = date.year.toString();
+      final month = date.month.toString().padLeft(2, '0');
+      final day = date.day.toString().padLeft(2, '0');
+      return '$year-$month-$day';
+    }
+
+    final dateKey = dateId(selectedDate);
+    final weekId = dateId(weekStart(selectedDate));
+
+    final planDoc = await _usersCollection
         .doc(uid)
-        .collection('intake')
-        .doc(dateKey)
+        .collection('weekly_plans')
+        .doc(weekId)
         .get();
 
-    final mealsMap = intakeDoc.data()?['meals'] as Map<String, dynamic>? ?? {};
+    final planData = planDoc.data() ?? {};
+    final days = planData['days'] as Map<String, dynamic>? ?? {};
+    final dayData = days[dateKey] as Map<String, dynamic>? ?? {};
+    final mealsMap = dayData['meals'] as Map<String, dynamic>? ?? {};
 
     // Aggregate today's totals
     double totalCalories = 0, totalFats = 0, totalCarbs = 0, totalProteins = 0;
 
     mealsMap.forEach((key, meal) {
       if (meal is Map<String, dynamic>) {
-        final macrosMap = meal['macros'] as Map<String, dynamic>? ?? {};
-        totalCalories += (macrosMap['calories'] ?? meal['calories'] ?? 0)
-            .toDouble();
-        totalFats += (macrosMap['fats'] ?? 0).toDouble();
-        totalCarbs += (macrosMap['carbs'] ?? 0).toDouble();
-        totalProteins += (macrosMap['protein'] ?? 0).toDouble();
+        totalCalories += (meal['calories'] ?? 0).toDouble();
+        totalProteins += (meal['protein'] ?? 0).toDouble();
+        totalFats += (meal['fats'] ?? 0).toDouble();
+        totalCarbs += (meal['carbs'] ?? 0).toDouble();
       }
     });
 
@@ -120,5 +131,45 @@ class UsersService {
         'proteins': totalProteins,
       },
     };
+  }
+
+  Future<bool> hasWeeklyPlanForWeek(DateTime date) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+
+    DateTime weekStart(DateTime d) {
+      final normalized = DateTime(d.year, d.month, d.day);
+      return normalized.subtract(Duration(days: normalized.weekday - 1));
+    }
+
+    String dateId(DateTime d) {
+      final y = d.year.toString();
+      final m = d.month.toString().padLeft(2, '0');
+      final day = d.day.toString().padLeft(2, '0');
+      return '$y-$m-$day';
+    }
+
+    final weekId = dateId(weekStart(date));
+
+    final planDoc = await _usersCollection
+        .doc(uid)
+        .collection('weekly_plans')
+        .doc(weekId)
+        .get();
+
+    if (!planDoc.exists) return false;
+    final data = planDoc.data() ?? {};
+    final days = data['days'] as Map<String, dynamic>? ?? {};
+    return days.isNotEmpty;
+  }
+
+  Future<bool> hasWeeklyPlanForNextWeek(DateTime date) async {
+    final startOfThisWeek = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: date.weekday - 1));
+    final startOfNextWeek = startOfThisWeek.add(const Duration(days: 7));
+    return hasWeeklyPlanForWeek(startOfNextWeek);
   }
 }

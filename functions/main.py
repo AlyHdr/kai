@@ -3,8 +3,8 @@ from firebase_functions import https_fn
 from firebase_admin import firestore
 
 from config import client
-from models import Macros, MealPlan
-from prompts import create_enhanced_prompt
+from models import Macros, MealPlan, GroceryList
+from prompts import create_enhanced_prompt, create_grocery_list_prompt
 from generation import (
     compute_slot_targets,
     generate_slot_options,
@@ -265,4 +265,84 @@ def generate_meal_plan_rag(req: https_fn.CallableRequest):
     except Exception as e:
         print(f"RAG generation error: {e}")
         return {"error": "Could not generate meal plan with RAG", "details": str(e)}
+
+
+@https_fn.on_call()
+def generate_grocery_list(req: https_fn.CallableRequest):
+    data = req.data or {}
+    user_id = req.auth.uid if hasattr(req, 'auth') and req.auth else None
+    if not user_id:
+        return {"error": "Authentication required."}
+
+    week_id = data.get('weekId')
+    if not week_id:
+        return {"error": "Missing weekId."}
+
+    plan_ref = db.collection('users').document(user_id).collection('weekly_plans').document(week_id)
+    snap = plan_ref.get()
+    if not snap.exists:
+        return {"error": "Weekly plan not found."}
+
+    plan_data = snap.to_dict() or {}
+    days = plan_data.get('days', {}) or {}
+    meals = []
+
+    for date_key, day_data in days.items():
+        day = day_data or {}
+        day_meals = (day.get('meals') or {})
+        for slot, meal in day_meals.items():
+            if isinstance(meal, dict):
+                meals.append({
+                    'day': date_key,
+                    'slot': slot,
+                    'name': meal.get('name') or meal.get('title') or 'Meal',
+                    'mealType': meal.get('mealType'),
+                    'tags': meal.get('tags', []),
+                })
+
+    if not meals:
+        return {"error": "No meals found for the selected week."}
+
+    plan_ref.set({
+        'groceryStatus': 'generating',
+        'groceryUpdatedAt': firestore.SERVER_TIMESTAMP,
+        'updatedAt': firestore.SERVER_TIMESTAMP,
+    }, merge=True)
+
+    prompt = create_grocery_list_prompt(meals)
+    try:
+        response = client.responses.parse(
+            model="gpt-4.1-mini",
+            input=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You generate accurate, consolidated grocery lists from meal names. "
+                        "Respond only with valid JSON matching the schema."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            text_format=GroceryList,
+        )
+        grocery_list = response.output_parsed
+        result = grocery_list.dict()
+
+        plan_ref.set({
+            'groceryList': result,
+            'groceryStatus': 'ready',
+            'groceryGeneratedAt': firestore.SERVER_TIMESTAMP,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        }, merge=True)
+
+        return result
+    except Exception as e:
+        print(f"Grocery list generation error: {e}")
+        plan_ref.set({
+            'groceryStatus': 'error',
+            'groceryError': str(e),
+            'groceryUpdatedAt': firestore.SERVER_TIMESTAMP,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        }, merge=True)
+        return {"error": "Could not generate grocery list", "details": str(e)}
   
