@@ -1,3 +1,4 @@
 *.local
 venv/
+.venv/
 firebase-service-account.json

@@ -1,5 +1,5 @@
 firebase_functions
-firebase_admin
+firebase_admin==7.1.0
 python-dotenv
 openai==1.93.0
 # LangChain minimal set used:

@@ -1,15 +1,7 @@
 import os
-from dotenv import load_dotenv
-import firebase_admin
-from firebase_admin import credentials, firestore
 from openai import OpenAI
 
 
-# Load env once at module import (not per request)
-load_dotenv()
-load_dotenv(".env.local")
-
-print("Initializing Firebase Admin SDK...")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")

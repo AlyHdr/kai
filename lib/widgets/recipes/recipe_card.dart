@@ -66,10 +66,15 @@ class RecipeCard extends StatelessWidget {
                             fit: BoxFit.cover,
                             loadingBuilder: (context, child, progress) {
                               if (progress == null) return child;
-                              return Container(color: recipe.palette.first);
+                              return _ImagePlaceholder(
+                                background: recipe.palette.first,
+                                showSpinner: true,
+                              );
                             },
                             errorBuilder: (context, error, stackTrace) {
-                              return Container(color: recipe.palette.first);
+                              return _ImagePlaceholder(
+                                background: recipe.palette.first,
+                              );
                             },
                           ),
                           Align(
@@ -197,6 +202,35 @@ class _TagChip extends StatelessWidget {
           fontWeight: FontWeight.w600,
           color: Colors.black87,
         ),
+      ),
+    );
+  }
+}
+
+class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder({
+    required this.background,
+    this.showSpinner = false,
+  });
+
+  final Color background;
+  final bool showSpinner;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: background,
+      child: Center(
+        child: showSpinner
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.image, color: Colors.white70),
       ),
     );
   }

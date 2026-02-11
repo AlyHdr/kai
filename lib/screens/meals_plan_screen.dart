@@ -592,9 +592,9 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       _isPlanConfirmed = true;
     });
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Weekly plan confirmed.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Weekly plan confirmed.')));
   }
 
   Future<void> _showGrocerySheet() async {
@@ -684,9 +684,9 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in first.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please sign in first.')));
     }
   }
 
@@ -892,7 +892,7 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showReviewSheet,
         backgroundColor: Colors.greenAccent,
-        foregroundColor: Colors.white,
+        foregroundColor: Colors.black,
         label: const Text('Review plan'),
         icon: const Icon(Icons.view_list),
       ),

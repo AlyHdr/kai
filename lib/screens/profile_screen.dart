@@ -453,13 +453,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           ListView(
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  "Profile",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
               ListTile(
                 title: const Text("Settings"),
                 leading: const Icon(Icons.settings),

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:kai/screens/dashboard_screen.dart';
+import 'package:kai/screens/home_screen.dart';
 import 'package:kai/screens/meals_plan_screen.dart';
 import 'package:kai/screens/profile_screen.dart';
-import 'package:kai/screens/settings_screen.dart';
-// Subscription gating removed from main screen; features will gate themselves.
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key, this.initialIndex = 0});
@@ -16,9 +14,10 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  static const _titles = ['Home', 'Meal Plans', 'Profile'];
 
   final List<Widget> _screens = [
-    const DashboardScreen(),
+    const HomeScreen(),
     const MealPlanScreen(),
     const ProfileScreen(),
   ];
@@ -37,6 +36,17 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 40,
+        title: Text(
+          _titles[_currentIndex],
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        backgroundColor: const Color(0xFFF1F5F2),
+        elevation: 0,
+      ),
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -44,10 +54,7 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.restaurant_menu),
             label: 'Meal Plans',

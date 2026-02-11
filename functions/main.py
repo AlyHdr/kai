@@ -1,8 +1,6 @@
 # Cloud Functions handlers; logic split into smaller modules for reuse.
-from firebase_functions import https_fn
-from firebase_admin import firestore
+from firebase_functions import https_fn, options
 
-from config import client
 from models import Macros, MealPlan, GroceryList
 from prompts import create_enhanced_prompt, create_grocery_list_prompt
 from generation import (
@@ -13,18 +11,30 @@ from generation import (
 from services import get_user_recent_meals
 from rag_utils import get_vector_store
 
-import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import initialize_app, firestore, credentials
+import google.cloud.firestore
+from dotenv import load_dotenv
+from openai import OpenAI
+import os
 
-cred = credentials.Certificate("firebase-service-account.json")
+load_dotenv(".env.local")
+print("Initializing Firebase Admin SDK...")
 
-firebase_admin.initialize_app(cred)
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    )
+
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "firebase-service-account.json"
+
+# Initialize without explicitly passing credentials
+app = initialize_app()
 db = firestore.client()
-
 
 @https_fn.on_call()
 def print_hello(req: https_fn.CallableRequest):
     print("Received request:", req.data)
+    db.collection('users').document('test_user').set({'greeting': 'Hello, world!'})
     return {"message": "Hello from Firebase Functions!"}
 
 
@@ -267,7 +277,10 @@ def generate_meal_plan_rag(req: https_fn.CallableRequest):
         return {"error": "Could not generate meal plan with RAG", "details": str(e)}
 
 
-@https_fn.on_call()
+@https_fn.on_call(
+    memory=options.MemoryOption.MB_512,
+    max_instances=2,
+)
 def generate_grocery_list(req: https_fn.CallableRequest):
     data = req.data or {}
     user_id = req.auth.uid if hasattr(req, 'auth') and req.auth else None
@@ -277,9 +290,11 @@ def generate_grocery_list(req: https_fn.CallableRequest):
     week_id = data.get('weekId')
     if not week_id:
         return {"error": "Missing weekId."}
-
+    print(f"Generating grocery list for user {user_id}, week {week_id}")
     plan_ref = db.collection('users').document(user_id).collection('weekly_plans').document(week_id)
+    print("Fetching weekly plan from Firestore.")
     snap = plan_ref.get()
+    print("Weekly plan snapshot:", snap.exists, snap.to_dict())
     if not snap.exists:
         return {"error": "Weekly plan not found."}
 

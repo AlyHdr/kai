@@ -26,9 +26,9 @@ class WeeklyPlanService {
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
     FirebaseFunctions? functions,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? FirebaseFunctions.instance;
+  }) : _auth = auth ?? FirebaseAuth.instance,
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       _functions = functions ?? FirebaseFunctions.instance;
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
@@ -81,10 +81,9 @@ class WeeklyPlanService {
     final selections = <String, Map<String, Map<String, dynamic>>>{};
     final filled = <String, Set<String>>{};
     final status = data['status']?.toString();
-    final groceryList =
-        data['groceryList'] is Map<String, dynamic>
-            ? Map<String, dynamic>.from(data['groceryList'])
-            : null;
+    final groceryList = data['groceryList'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(data['groceryList'])
+        : null;
     final groceryStatus = data['groceryStatus']?.toString();
 
     for (final entry in daysData.entries) {
@@ -94,9 +93,7 @@ class WeeklyPlanService {
 
       for (final mealEntry in meals.entries) {
         if (mealEntry.value is Map<String, dynamic>) {
-          mealsMap[mealEntry.key] = Map<String, dynamic>.from(
-            mealEntry.value,
-          );
+          mealsMap[mealEntry.key] = Map<String, dynamic>.from(mealEntry.value);
         }
       }
 
@@ -218,9 +215,9 @@ class WeeklyPlanService {
   }
 
   Future<void> generateGroceryList(DateTime weekStartDate) async {
-    if (const bool.fromEnvironment('dart.vm.product') == false) {
-      _functions.useFunctionsEmulator('localhost', 5001);
-    }
+    // if (const bool.fromEnvironment('dart.vm.product') == false) {
+    //   _functions.useFunctionsEmulator('localhost', 5001);
+    // }
 
     final weekId = _dateId(weekStartDate);
     await _functions.httpsCallable('generate_grocery_list').call({
