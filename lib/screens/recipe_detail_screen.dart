@@ -60,28 +60,65 @@ class RecipeDetailScreen extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: recipe.tags
-                          .map((tag) => _InfoPill(
-                                label: tag,
-                                background: const Color(0xFFF1F5F9),
-                              ))
+                          .map(
+                            (tag) => _InfoPill(
+                              label: tag,
+                              background: const Color(0xFFF1F5F9),
+                            ),
+                          )
                           .toList(),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
-                      'About this recipe',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                    if (recipe.ingredientsList.isNotEmpty) ...[
+                      const Text(
+                        'Ingredients',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'A balanced, macro-friendly dish designed to match your'
-                      ' weekly plan. Ingredients and steps will appear here once'
-                      ' we connect the shared recipe library.',
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 8),
+                      ...recipe.ingredientsList.map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text('- $item'),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    if (recipe.instructionsList.isNotEmpty) ...[
+                      const Text(
+                        'Instructions',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...recipe.instructionsList.asMap().entries.map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text('${entry.key + 1}. ${entry.value}'),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    if (recipe.ingredientsList.isEmpty &&
+                        recipe.instructionsList.isEmpty) ...[
+                      const Text(
+                        'About this recipe',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Recipe details are not available yet for this item.',
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ],
                 ),
               ),
@@ -150,7 +187,7 @@ class _HeroImage extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.black.withOpacity(0.35),
+                  Colors.black.withValues(alpha: 0.35),
                   Colors.transparent,
                 ],
                 begin: Alignment.bottomCenter,
@@ -195,7 +232,7 @@ class _CircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withOpacity(0.9),
+      color: Colors.white.withValues(alpha: 0.9),
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),

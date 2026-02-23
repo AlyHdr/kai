@@ -14,11 +14,12 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  static const _titles = ['Home', 'Meal Plans', 'Profile'];
+  static const _titles = ['Home', 'Planner', 'My Week', 'Profile'];
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const MealPlanScreen(),
+    const MealPlanScreen(mode: MealPlanViewMode.planner),
+    const MealPlanScreen(mode: MealPlanViewMode.myWeek),
     const ProfileScreen(),
   ];
 
@@ -57,7 +58,11 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.restaurant_menu),
-            label: 'Meal Plans',
+            label: 'Planner',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: 'My Week',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],

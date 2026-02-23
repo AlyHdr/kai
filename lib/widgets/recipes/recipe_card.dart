@@ -7,13 +7,15 @@ class RecipeCard extends StatelessWidget {
     required this.recipe,
     required this.onTap,
     required this.onAdd,
-    required this.isSlotFilled,
+    required this.isSelected,
+    required this.isLocked,
   });
 
   final Recipe recipe;
   final VoidCallback onTap;
   final VoidCallback onAdd;
-  final bool isSlotFilled;
+  final bool isSelected;
+  final bool isLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -88,8 +90,9 @@ class RecipeCard extends StatelessWidget {
                             left: 10,
                             top: 10,
                             child: _AddButton(
-                              onTap: isSlotFilled ? null : onAdd,
-                              isChecked: isSlotFilled,
+                              onTap: isLocked ? null : onAdd,
+                              isSelected: isSelected,
+                              isLocked: isLocked,
                             ),
                           ),
                         ],
@@ -167,7 +170,7 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.35),
+        color: Colors.black.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
@@ -237,17 +240,28 @@ class _ImagePlaceholder extends StatelessWidget {
 }
 
 class _AddButton extends StatelessWidget {
-  const _AddButton({required this.onTap, this.isChecked = false});
+  const _AddButton({
+    required this.onTap,
+    required this.isSelected,
+    required this.isLocked,
+  });
 
   final VoidCallback? onTap;
-  final bool isChecked;
+  final bool isSelected;
+  final bool isLocked;
 
   @override
   Widget build(BuildContext context) {
-    final background = isChecked
+    final background = isSelected
         ? Colors.greenAccent
-        : Colors.white.withOpacity(0.9);
-    final icon = isChecked ? Icons.check : Icons.add;
+        : isLocked
+        ? const Color(0xFFE5E7EB)
+        : Colors.white.withValues(alpha: 0.9);
+    final icon = isSelected
+        ? Icons.check
+        : isLocked
+        ? Icons.lock_outline
+        : Icons.add;
     final iconColor = Colors.black87;
     return Material(
       color: background,

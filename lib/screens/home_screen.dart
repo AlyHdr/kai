@@ -64,9 +64,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadPlanForDate(date);
   }
 
-  void _openPlanner() {
+  void _openPlanDestination() {
+    final hasConfirmedWeek = _plan?.isConfirmed ?? false;
+    final tabIndex = hasConfirmedWeek ? 2 : 1;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainScreen(initialIndex: 1)),
+      MaterialPageRoute(builder: (_) => MainScreen(initialIndex: tabIndex)),
     );
   }
 
@@ -102,8 +104,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final plan = _plan;
+    final isPlanConfirmed = plan?.isConfirmed ?? false;
+    final hasDraftSelections = !isPlanConfirmed &&
+        (plan?.selections.isNotEmpty ?? false);
     final todayKey = _dateId(_selectedDate);
-    final todayMeals = plan?.selections[todayKey] ?? {};
+    final todayMeals = isPlanConfirmed
+        ? (plan?.selections[todayKey] ?? <String, Map<String, dynamic>>{})
+        : <String, Map<String, dynamic>>{};
 
     return SafeArea(
       child: Padding(
@@ -128,10 +135,14 @@ class _HomeScreenState extends State<HomeScreen> {
               selectedDate: _selectedDate,
               onDateSelected: _onDateSelected,
             ),
+            if (hasDraftSelections) ...[
+              const SizedBox(height: 8),
+              const _DraftPendingCard(),
+            ],
             const SizedBox(height: 8),
             _SectionCard(
               title: 'Todays Meals',
-              trailing: _SectionAction(label: 'Plan', onTap: _openPlanner),
+              trailing: _SectionAction(label: 'Plan', onTap: _openPlanDestination),
               child: Builder(
                 builder: (context) {
                   final plannedMeals = _slots
@@ -144,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       .toList();
 
                   if (plannedMeals.isEmpty) {
-                    return _EmptyTodayMeals(onTap: _openPlanner);
+                    return _EmptyTodayMeals(onTap: _openPlanDestination);
                   }
 
                   return SizedBox(
@@ -156,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemBuilder: (context, index) {
                         return _MealPreviewCard(
                           meal: plannedMeals[index],
-                          onTap: _openPlanner,
+                          onTap: _openPlanDestination,
                         );
                       },
                     ),
@@ -231,6 +242,38 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+}
+
+class _DraftPendingCard extends StatelessWidget {
+  const _DraftPendingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFCD34D)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.pending_actions, size: 18, color: Color(0xFF92400E)),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Draft week not confirmed yet. Home stats use confirmed plans only.',
+              style: TextStyle(
+                color: Color(0xFF78350F),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SectionCard extends StatelessWidget {

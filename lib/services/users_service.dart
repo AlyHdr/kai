@@ -63,7 +63,6 @@ class UsersService {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
 
-    // Fetch user document
     final userDoc = await _usersCollection.doc(uid).get();
     if (!userDoc.exists) return null;
 
@@ -93,11 +92,13 @@ class UsersService {
         .get();
 
     final planData = planDoc.data() ?? {};
-    final days = planData['days'] as Map<String, dynamic>? ?? {};
+    final isConfirmed = planData['status']?.toString() == 'confirmed';
+    final days = isConfirmed
+        ? (planData['days'] as Map<String, dynamic>? ?? <String, dynamic>{})
+        : <String, dynamic>{};
     final dayData = days[dateKey] as Map<String, dynamic>? ?? {};
     final mealsMap = dayData['meals'] as Map<String, dynamic>? ?? {};
 
-    // Aggregate today's totals
     double totalCalories = 0, totalFats = 0, totalCarbs = 0, totalProteins = 0;
 
     mealsMap.forEach((key, meal) {
@@ -109,7 +110,6 @@ class UsersService {
       }
     });
 
-    // Calculate progress
     double calorieProgress = totalCalories / (macros['calories'] ?? 1);
     double fatProgress = totalFats / (macros['fats'] ?? 1);
     double carbProgress = totalCarbs / (macros['carbs'] ?? 1);
@@ -159,6 +159,7 @@ class UsersService {
 
     if (!planDoc.exists) return false;
     final data = planDoc.data() ?? {};
+    if (data['status']?.toString() != 'confirmed') return false;
     final days = data['days'] as Map<String, dynamic>? ?? {};
     return days.isNotEmpty;
   }

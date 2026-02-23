@@ -1,25 +1,32 @@
-  service cloud.firestore {
+service cloud.firestore {
   match /databases/{database}/documents {
-  function isSignedIn() {
-  return request.auth != null;
-  }
-  function isOwner(userId) {
-  return isSignedIn() && request.auth.uid == userId;
-  }
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-      // Users and all subcollections: owner-only read/write
-      match /users/{userId} {
-        allow read, create, update, delete: if isOwner(userId);
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
 
-        match /{document=**} {
-          allow read, write: if isOwner(userId);
-        }
-      }
+    // Shared recipe catalog: signed-in users can read.
+    // Writes are blocked from clients (admin SDK can still ingest).
+    match /recipes/{recipeId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
 
-      // Deny everything else by default
+    // Users and all subcollections: owner-only read/write.
+    match /users/{userId} {
+      allow read, create, update, delete: if isOwner(userId);
+
       match /{document=**} {
-        allow read, write: if false;
+        allow read, write: if isOwner(userId);
       }
+    }
 
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
-  }
+}

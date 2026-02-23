@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:kai/models/recipe.dart';
+import 'package:kai/screens/main_screen.dart';
 import 'package:kai/screens/recipe_detail_screen.dart';
+import 'package:kai/screens/week_planner_catalog_screen.dart';
+import 'package:kai/services/recipe_catalog_service.dart';
 import 'package:kai/services/weekly_plan_service.dart';
 import 'package:kai/widgets/recipes/confirmed_plan_view.dart';
 import 'package:kai/widgets/recipes/grocery_list_sheet.dart';
-import 'package:kai/widgets/recipes/recipe_card.dart';
 import 'package:kai/widgets/recipes/review_recipe_tile.dart';
-import 'package:kai/widgets/recipes/week_day_picker.dart';
+
+enum MealPlanViewMode { planner, myWeek }
 
 class MealPlanScreen extends StatefulWidget {
-  const MealPlanScreen({super.key});
+  const MealPlanScreen({super.key, this.mode = MealPlanViewMode.planner});
+
+  final MealPlanViewMode mode;
 
   @override
   State<MealPlanScreen> createState() => _MealPlanScreenState();
@@ -17,15 +22,18 @@ class MealPlanScreen extends StatefulWidget {
 
 class _MealPlanScreenState extends State<MealPlanScreen> {
   final _weeklyPlanService = WeeklyPlanService();
+  final _recipeCatalogService = RecipeCatalogService();
   String _activeFilter = 'All';
   late final List<DateTime> _days;
   int _currentDayIndex = 0;
   final Map<String, Set<String>> _filledSlotsByDate = {};
   final Map<String, Map<String, Map<String, dynamic>>> _weeklySelections = {};
+  List<Recipe> _catalogRecipes = const [];
   bool _isPlanConfirmed = false;
   Map<String, dynamic>? _groceryList;
   String? _groceryStatus;
   bool _isLoadingPlan = true;
+  bool _isLoadingCatalog = true;
 
   static const List<String> _filters = [
     'All',
@@ -39,144 +47,11 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
     'Quick',
   ];
 
-  final List<Recipe> _recipes = const [
-    Recipe(
-      name: 'Citrus Salmon Bowl',
-      mealType: 'Dinner',
-      calories: 540,
-      protein: 42,
-      fats: 18,
-      carbs: 36,
-      timeMinutes: 25,
-      tags: ['High Protein', 'Low Carb'],
-      imageUrl:
-          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=80&auto=format&fit=crop',
-      palette: [Color(0xFF0F766E), Color(0xFF99F6E4)],
-    ),
-    Recipe(
-      name: 'Honey Oat Parfait',
-      mealType: 'Breakfast',
-      calories: 320,
-      protein: 22,
-      fats: 8,
-      carbs: 42,
-      timeMinutes: 10,
-      tags: ['Quick', 'Vegetarian'],
-      imageUrl:
-          'https://images.unsplash.com/photo-1505253213348-ce5ec29d52f3?w=1200&q=80&auto=format&fit=crop',
-      palette: [Color(0xFFF97316), Color(0xFFFCD34D)],
-    ),
-    Recipe(
-      name: 'Herb Chicken Lettuce Wraps',
-      mealType: 'Lunch',
-      calories: 410,
-      protein: 38,
-      fats: 12,
-      carbs: 28,
-      timeMinutes: 18,
-      tags: ['Low Carb', 'Quick'],
-      imageUrl:
-          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=80&auto=format&fit=crop',
-      palette: [Color(0xFF16A34A), Color(0xFFBBF7D0)],
-    ),
-    Recipe(
-      name: 'Miso Soba Salad',
-      mealType: 'Lunch',
-      calories: 465,
-      protein: 18,
-      fats: 14,
-      carbs: 62,
-      timeMinutes: 20,
-      tags: ['Vegetarian'],
-      imageUrl:
-          'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=1200&q=80&auto=format&fit=crop',
-      palette: [Color(0xFF4F46E5), Color(0xFFC7D2FE)],
-    ),
-    Recipe(
-      name: 'Smoky Turkey Chili',
-      mealType: 'Dinner',
-      calories: 560,
-      protein: 46,
-      fats: 16,
-      carbs: 48,
-      timeMinutes: 35,
-      tags: ['High Protein'],
-      imageUrl:
-          'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=1200&q=80&auto=format&fit=crop',
-      palette: [Color(0xFFB91C1C), Color(0xFFFECACA)],
-    ),
-    Recipe(
-      name: 'Avocado Crunch Toast',
-      mealType: 'Breakfast',
-      calories: 350,
-      protein: 15,
-      fats: 17,
-      carbs: 38,
-      timeMinutes: 12,
-      tags: ['Vegetarian'],
-      imageUrl:
-          'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=1200&q=80&auto=format&fit=crop',
-      palette: [Color(0xFF0EA5E9), Color(0xFFBAE6FD)],
-    ),
-    Recipe(
-      name: 'Tofu Rainbow Stir-Fry',
-      mealType: 'Dinner',
-      calories: 505,
-      protein: 28,
-      fats: 15,
-      carbs: 58,
-      timeMinutes: 22,
-      tags: ['Vegetarian', 'Quick'],
-      imageUrl:
-          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&q=80&auto=format&fit=crop',
-      palette: [Color(0xFF7C3AED), Color(0xFFE9D5FF)],
-    ),
-    Recipe(
-      name: 'Berry Protein Shake',
-      mealType: 'Snack',
-      calories: 260,
-      protein: 24,
-      fats: 6,
-      carbs: 28,
-      timeMinutes: 6,
-      tags: ['High Protein', 'Quick'],
-      imageUrl:
-          'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=1200&q=80&auto=format&fit=crop',
-      palette: [Color(0xFFDB2777), Color(0xFFFBCFE8)],
-    ),
-    Recipe(
-      name: 'Zaatar Chickpea Bowl',
-      mealType: 'Dinner',
-      calories: 480,
-      protein: 20,
-      fats: 14,
-      carbs: 62,
-      timeMinutes: 28,
-      tags: ['Vegetarian'],
-      imageUrl:
-          'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=1200&q=80&auto=format&fit=crop',
-      palette: [Color(0xFF0F172A), Color(0xFFE2E8F0)],
-    ),
-    Recipe(
-      name: 'Peanut Noodle Jar',
-      mealType: 'Lunch',
-      calories: 520,
-      protein: 21,
-      fats: 18,
-      carbs: 64,
-      timeMinutes: 15,
-      tags: ['Quick', 'Vegetarian'],
-      imageUrl:
-          'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=1200&q=80&auto=format&fit=crop',
-      palette: [Color(0xFF9A3412), Color(0xFFFED7AA)],
-    ),
-  ];
-
   static const List<String> _slots = ['breakfast', 'lunch', 'dinner', 'snack'];
   static const List<String> _requiredSlots = ['breakfast', 'lunch', 'dinner'];
 
   List<Recipe> _filteredRecipes() {
-    return _recipes.where((recipe) {
+    return _catalogRecipes.where((recipe) {
       final matchesFilter =
           _activeFilter == 'All' ||
           recipe.mealType == _activeFilter ||
@@ -207,7 +82,22 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       7,
       (i) => startOfThisWeek.add(Duration(days: i)),
     );
+    _loadCatalogRecipes();
     _loadWeeklySelections(showLoading: true);
+  }
+
+  Future<void> _loadCatalogRecipes() async {
+    try {
+      final recipes = await _recipeCatalogService.fetchRecipes();
+      if (!mounted) return;
+      setState(() {
+        _catalogRecipes = recipes;
+        _isLoadingCatalog = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingCatalog = false);
+    }
   }
 
   String _weekdayLabel(DateTime date) {
@@ -383,6 +273,7 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
     final carbs = (data['carbs'] as num?)?.round() ?? 0;
     final timeMinutes = (data['timeMinutes'] as num?)?.round() ?? 0;
     return Recipe(
+      recipeId: data['recipeId']?.toString() ?? data['name']?.toString() ?? 'recipe',
       name: data['name']?.toString() ?? 'Recipe',
       mealType: data['mealType']?.toString() ?? 'Meal',
       calories: calories,
@@ -391,7 +282,17 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
       carbs: carbs,
       timeMinutes: timeMinutes,
       tags: List<String>.from(data['tags'] ?? const <String>[]),
-      imageUrl: data['imageUrl']?.toString() ?? '',
+      imageUrl: data['imageUrl']?.toString() ?? data['image']?.toString() ?? '',
+      ingredientsList: data['ingredientsList'] is List
+          ? List<String>.from(data['ingredientsList'])
+          : data['ingredients_list'] is List
+          ? List<String>.from(data['ingredients_list'])
+          : const <String>[],
+      instructionsList: data['instructionsList'] is List
+          ? List<String>.from(data['instructionsList'])
+          : data['instructions_list'] is List
+          ? List<String>.from(data['instructions_list'])
+          : const <String>[],
       palette: const [Color(0xFF0F172A), Color(0xFFE2E8F0)],
     );
   }
@@ -679,6 +580,15 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
         _groceryList = null;
         _groceryStatus = null;
       });
+      if (widget.mode == MealPlanViewMode.myWeek) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const MainScreen(initialIndex: 1),
+          ),
+        );
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Plan unlocked for editing.')),
       );
@@ -713,190 +623,93 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingPlan) {
+    if (_isLoadingPlan || _isLoadingCatalog) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (_isPlanConfirmed) {
-      return _buildConfirmedPlan(context);
+    if (widget.mode == MealPlanViewMode.myWeek) {
+      if (_isPlanConfirmed) {
+        return _buildConfirmedPlan(context);
+      }
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.event_note, size: 44, color: Colors.black38),
+                const SizedBox(height: 12),
+                const Text(
+                  'No confirmed week yet.',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Build and confirm your week in Planner to see it here.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (_) => const MainScreen(initialIndex: 1),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.greenAccent,
+                    foregroundColor: Colors.black,
+                  ),
+                  icon: const Icon(Icons.restaurant_menu),
+                  label: const Text('Go to Planner'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
-
-    final theme = Theme.of(context);
+    // Planner tab remains editable/catalog-focused even after confirmation.
+    // Confirmed plans are shown in the "My Week" tab.
     final recipes = _filteredRecipes();
     final currentDateKey = _dateId(_currentDay);
     final filledSlots = _filledSlotsByDate[currentDateKey] ?? <String>{};
+    final currentDaySelections =
+        _weeklySelections[currentDateKey] ?? <String, Map<String, dynamic>>{};
+    final selectedRecipeIdBySlot = <String, String>{
+      for (final entry in currentDaySelections.entries)
+        entry.key: (entry.value['recipeId'] ?? entry.value['name'] ?? '').toString(),
+    };
     final filledCount = filledSlots.length;
     final totalSlots = _slots.length;
-    final progress = totalSlots == 0
-        ? 0.0
-        : (filledCount / totalSlots).clamp(0.0, 1.0);
     final missingSlots = _slots.where((slot) => !filledSlots.contains(slot));
 
-    return Scaffold(
-      body: SafeArea(
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFF8FAFC), Color(0xFFE2E8F0)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      WeekDayPicker(
-                        days: _days,
-                        selectedDate: _currentDay,
-                        isFilled: _isDayComplete,
-                        onDateSelected: (date) {
-                          final index = _days.indexWhere(
-                            (d) => _dateId(d) == _dateId(date),
-                          );
-                          if (index != -1) {
-                            setState(() => _currentDayIndex = index);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                '$filledCount/$totalSlots slots filled',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              if (missingSlots.isNotEmpty)
-                                Text(
-                                  'Missing: ${missingSlots.map(_slotLabel).join(', ')}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              backgroundColor: const Color(0xFFE2E8F0),
-                              color: Colors.greenAccent,
-                              minHeight: 8,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 52,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _filters.length,
-                    itemBuilder: (context, index) {
-                      final filter = _filters[index];
-                      final selected = _activeFilter == filter;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: ChoiceChip(
-                          label: Text(filter),
-                          labelPadding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          materialTapTargetSize: MaterialTapTargetSize.padded,
-                          selected: selected,
-                          onSelected: (_) {
-                            setState(() => _activeFilter = filter);
-                          },
-                          selectedColor: Colors.greenAccent,
-                          labelStyle: TextStyle(
-                            color: selected ? Colors.black : Colors.black87,
-                            fontWeight: selected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'All recipes',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        '${recipes.length} total',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: MediaQuery.of(context).size.width > 700
-                        ? 3
-                        : 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.6,
-                  ),
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final recipe = recipes[index];
-                    final slot = _slotForMealType(recipe.mealType);
-                    final isSlotFilled = filledSlots.contains(slot);
-                    return RecipeCard(
-                      recipe: recipe,
-                      onTap: () => _openDetails(recipe),
-                      onAdd: () => _addForCurrentDay(recipe),
-                      isSlotFilled: isSlotFilled,
-                    );
-                  }, childCount: recipes.length),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showReviewSheet,
-        backgroundColor: Colors.greenAccent,
-        foregroundColor: Colors.black,
-        label: const Text('Review plan'),
-        icon: const Icon(Icons.view_list),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    return WeekPlannerCatalogScreen(
+      days: _days,
+      currentDay: _currentDay,
+      isDayComplete: _isDayComplete,
+      onDateSelected: (date) {
+        final index = _days.indexWhere((d) => _dateId(d) == _dateId(date));
+        if (index != -1) {
+          setState(() => _currentDayIndex = index);
+        }
+      },
+      filledCount: filledCount,
+      totalSlots: totalSlots,
+      missingSlots: missingSlots,
+      slotLabel: _slotLabel,
+      filters: _filters,
+      activeFilter: _activeFilter,
+      onFilterSelected: (filter) => setState(() => _activeFilter = filter),
+      recipes: recipes,
+      slotForMealType: _slotForMealType,
+      filledSlots: filledSlots,
+      selectedRecipeIdBySlot: selectedRecipeIdBySlot,
+      onOpenDetails: _openDetails,
+      onAddForCurrentDay: _addForCurrentDay,
+      onReviewPlan: _showReviewSheet,
     );
   }
 }
